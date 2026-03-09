@@ -1,7 +1,7 @@
 import React from "react";
 
 const RepoCard = ({ schedule }) => {
-  // schedule object expected: { id, repoPath, branch, pushTime, status }
+  // schedule object expected: { id, repo_owner, repo_name, github_repo_url, branch, pushTime, status }
 
   const getStatusColor = (status) => {
     const colors = {
@@ -23,6 +23,12 @@ const RepoCard = ({ schedule }) => {
     });
   };
 
+  // Display GitHub repo name or fall back to legacy repo_path
+  const displayName =
+    schedule?.repo_owner && schedule?.repo_name
+      ? `${schedule.repo_owner}/${schedule.repo_name}`
+      : schedule?.repo_path || "/path/to/repository";
+
   return (
     <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-200">
       <div className="flex items-start justify-between mb-4">
@@ -39,7 +45,18 @@ const RepoCard = ({ schedule }) => {
                 clipRule="evenodd"
               />
             </svg>
-            {schedule?.repoPath || "/path/to/repository"}
+            {schedule?.github_repo_url ? (
+              <a
+                href={schedule.github_repo_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-blue-600 transition-colors"
+              >
+                {displayName}
+              </a>
+            ) : (
+              displayName
+            )}
           </h3>
           <p className="text-sm text-gray-600 flex items-center">
             <svg

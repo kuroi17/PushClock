@@ -19,9 +19,11 @@ const AddSchedule = () => {
     try {
       setIsSubmitting(true);
 
-      // Transform frontend data format to backend format
+      // formData now contains: github_repo_url, repo_owner, repo_name, branch, pushTime
       const scheduleData = {
-        repo_path: formData.repoPath,
+        github_repo_url: formData.github_repo_url,
+        repo_owner: formData.repo_owner,
+        repo_name: formData.repo_name,
         branch: formData.branch,
         push_time: formData.pushTime,
       };
@@ -32,7 +34,7 @@ const AddSchedule = () => {
         setNotification({
           show: true,
           type: "success",
-          message: `Push scheduled successfully for ${formData.branch} at ${formData.pushTime}`,
+          message: `Push scheduled successfully for ${formData.repo_owner}/${formData.repo_name} (${formData.branch})`,
         });
 
         // Redirect to dashboard after 2 seconds
@@ -89,11 +91,11 @@ const AddSchedule = () => {
             <div>
               <h3 className="text-blue-900 font-semibold mb-1">How it works</h3>
               <ul className="text-blue-800 text-sm space-y-1">
-                <li>• Enter the full path to your local Git repository</li>
-                <li>• Select the branch you want to push</li>
-                <li>• Choose the date and time for the scheduled push</li>
+                <li>• Select a repository from your GitHub account</li>
+                <li>• Choose the branch you want to push</li>
+                <li>• Set the date and time for the scheduled push</li>
                 <li>
-                  • Our scheduler will automatically push at the specified time
+                  • GitHub Actions will automatically push at the specified time
                 </li>
               </ul>
             </div>

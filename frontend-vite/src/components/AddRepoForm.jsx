@@ -1,14 +1,75 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import githubAPI from "../services/github";
 
 const AddRepoForm = ({ onSubmit }) => {
+  const [repositories, setRepositories] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingBranches, setLoadingBranches] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedRepo, setSelectedRepo] = useState(null);
+
   const [formData, setFormData] = useState({
-    repoPath: "",
-    branch: "main",
+    branch: "",
     pushDate: "",
     pushTime: "",
   });
 
   const [errors, setErrors] = useState({});
+
+  // Fetch user's repositories on mount
+  useEffect(() => {
+    const fetchRepositories = async () => {
+      try {
+        setLoading(true);
+        const repos = await githubAPI.getUserRepositories();
+        setRepositories(repos);
+      } catch (error) {
+        console.error("Error fetching repositories:", error);
+        alert("Failed to fetch repositories. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRepositories();
+  }, []);
+
+  // Fetch branches when a repository is selected
+  useEffect(() => {
+    const fetchBranches = async () => {
+      if (!selectedRepo) {
+        setBranches([]);
+        return;
+      }
+
+      try {
+        setLoadingBranches(true);
+        const repoBranches = await githubAPI.getBranches(
+          selectedRepo.owner,
+          selectedRepo.name,
+        );
+        setBranches(repoBranches);
+
+        // Auto-select default branch if available
+        if (selectedRepo.default_branch) {
+          setFormData((prev) => ({
+            ...prev,
+            branch: selectedRepo.default_branch,
+          }));
+        } else if (repoBranches.length > 0) {
+          setFormData((prev) => ({ ...prev, branch: repoBranches[0].name }));
+        }
+      } catch (error) {
+        console.error("Error fetching branches:", error);
+        alert("Failed to fetch branches. Please try again.");
+      } finally {
+        setLoadingBranches(false);
+      }
+    };
+
+    fetchBranches();
+  }, [selectedRepo]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -22,37 +83,23 @@ const AddRepoForm = ({ onSubmit }) => {
     }
   };
 
-  // file system access API to select folder (note: limited browser support)
-  const handleBrowseFolder = async () => {
-    try {
-      // Check if the browser supports the File System Access API
-      if ("showDirectoryPicker" in window) {
-        const directoryHandle = await window.showDirectoryPicker();
-        // Get the full path (note: web API doesn't provide full path for security)
-        // We'll use the name for now
-        setFormData((prev) => ({
-          ...prev,
-          repoPath: directoryHandle.name,
-        }));
-      } else {
-        // Fallback: Alert user to manually enter path
-        alert(
-          "Your browser does not support folder selection. Please enter the path manually.",
-        );
-      }
-    } catch (error) {
-      // User cancelled the picker or an error occurred
-      if (error.name !== "AbortError") {
-        console.error("Error selecting folder:", error);
-      }
-    }
+  const handleRepoSelect = (repo) => {
+    setSelectedRepo(repo);
+    setSearchQuery(repo.full_name);
+    setErrors((prev) => ({ ...prev, repository: "" }));
   };
+
+  const filteredRepos = repositories.filter(
+    (repo) =>
+      repo.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      repo.description?.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
 
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.repoPath.trim()) {
-      newErrors.repoPath = "Repository path is required";
+    if (!selectedRepo) {
+      newErrors.repository = "Please select a repository";
     }
 
     if (!formData.branch.trim()) {
@@ -77,7 +124,10 @@ const AddRepoForm = ({ onSubmit }) => {
     if (validateForm()) {
       const pushDateTime = `${formData.pushDate}T${formData.pushTime}:00`;
       const submitData = {
-        ...formData,
+        github_repo_url: selectedRepo.html_url,
+        repo_owner: selectedRepo.owner,
+        repo_name: selectedRepo.name,
+        branch: formData.branch,
         pushTime: pushDateTime,
       };
 
@@ -86,12 +136,14 @@ const AddRepoForm = ({ onSubmit }) => {
       }
 
       // Reset form
+      setSelectedRepo(null);
+      setSearchQuery("");
       setFormData({
-        repoPath: "",
-        branch: "main",
+        branch: "",
         pushDate: "",
         pushTime: "",
       });
+      setBranches([]);
     }
   };
 
@@ -117,48 +169,110 @@ const AddRepoForm = ({ onSubmit }) => {
         Schedule New Push
       </h2>
 
-      {/* Repository Path */}
+      {/* Repository Selection */}
       <div className="mb-6">
         <label
-          htmlFor="repoPath"
+          htmlFor="repository"
           className="block text-sm font-semibold text-gray-700 mb-2"
         >
-          Repository Path
+          GitHub Repository
         </label>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            id="repoPath"
-            name="repoPath"
-            value={formData.repoPath}
-            onChange={handleChange}
-            placeholder="C:\\Users\\YourName\\Projects\\my-repo"
-            className={`flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-              errors.repoPath ? "border-red-500" : "border-gray-300"
-            }`}
-          />
-          <button
-            type="button"
-            onClick={handleBrowseFolder}
-            className="px-6 py-3 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg transition-colors duration-200 font-medium text-gray-700 flex items-center gap-2"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-              />
-            </svg>
-            Browse
-          </button>
-        </div>
-        {errors.repoPath && (
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-3 text-gray-600">Loading repositories...</span>
+          </div>
+        ) : (
+          <div className="relative">
+            <input
+              type="text"
+              id="repository"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                if (
+                  selectedRepo &&
+                  !e.target.value.includes(selectedRepo.full_name)
+                ) {
+                  setSelectedRepo(null);
+                }
+              }}
+              placeholder="Search your repositories..."
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                errors.repository ? "border-red-500" : "border-gray-300"
+              }`}
+            />
+
+            {/* Repository Dropdown */}
+            {searchQuery && !selectedRepo && filteredRepos.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                {filteredRepos.map((repo) => (
+                  <div
+                    key={repo.id}
+                    onClick={() => handleRepoSelect(repo)}
+                    className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800">
+                          {repo.full_name}
+                        </p>
+                        {repo.description && (
+                          <p className="text-sm text-gray-600 mt-1">
+                            {repo.description}
+                          </p>
+                        )}
+                      </div>
+                      {repo.private && (
+                        <span className="ml-2 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded">
+                          Private
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Selected Repository Display */}
+            {selectedRepo && (
+              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-blue-900">
+                    {selectedRepo.full_name}
+                  </p>
+                  {selectedRepo.description && (
+                    <p className="text-sm text-blue-700 mt-1">
+                      {selectedRepo.description}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedRepo(null);
+                    setSearchQuery("");
+                    setBranches([]);
+                  }}
+                  className="ml-2 text-blue-600 hover:text-blue-800"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+        {errors.repository && (
           <p className="mt-2 text-sm text-red-600 flex items-center">
             <svg
               className="w-4 h-4 mr-1"
@@ -171,12 +285,12 @@ const AddRepoForm = ({ onSubmit }) => {
                 clipRule="evenodd"
               />
             </svg>
-            {errors.repoPath}
+            {errors.repository}
           </p>
         )}
       </div>
 
-      {/* Branch Name */}
+      {/* Branch Selection */}
       <div className="mb-6">
         <label
           htmlFor="branch"
@@ -184,17 +298,43 @@ const AddRepoForm = ({ onSubmit }) => {
         >
           Branch Name
         </label>
-        <input
-          type="text"
-          id="branch"
-          name="branch"
-          value={formData.branch}
-          onChange={handleChange}
-          placeholder="main"
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-            errors.branch ? "border-red-500" : "border-gray-300"
-          }`}
-        />
+        {loadingBranches ? (
+          <div className="flex items-center py-3 px-4 border border-gray-300 rounded-lg">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+            <span className="ml-3 text-gray-600">Loading branches...</span>
+          </div>
+        ) : branches.length > 0 ? (
+          <select
+            id="branch"
+            name="branch"
+            value={formData.branch}
+            onChange={handleChange}
+            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+              errors.branch ? "border-red-500" : "border-gray-300"
+            }`}
+            disabled={!selectedRepo}
+          >
+            <option value="">Select a branch</option>
+            {branches.map((branch) => (
+              <option key={branch.name} value={branch.name}>
+                {branch.name} {branch.protected && "(Protected)"}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            type="text"
+            id="branch"
+            name="branch"
+            value={formData.branch}
+            onChange={handleChange}
+            placeholder="e.g., main"
+            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+              errors.branch ? "border-red-500" : "border-gray-300"
+            }`}
+            disabled={!selectedRepo}
+          />
+        )}
         {errors.branch && (
           <p className="mt-2 text-sm text-red-600 flex items-center">
             <svg
@@ -264,7 +404,8 @@ const AddRepoForm = ({ onSubmit }) => {
       <div className="flex justify-end">
         <button
           type="submit"
-          className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-lg hover:from-blue-700 hover:to-indigo-800 transition-all duration-200 font-medium shadow-lg hover:shadow-xl flex items-center gap-2"
+          className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-lg hover:from-blue-700 hover:to-indigo-800 transition-all duration-200 font-medium shadow-lg hover:shadow-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={loading || !selectedRepo}
         >
           <svg
             className="w-5 h-5"
