@@ -1,24 +1,57 @@
 const express = require("express");
 const cors = require("cors");
+const session = require("express-session");
+const cookieParser = require("cookie-parser");
 require("dotenv").config();
 
+const passport = require("./config/passport");
+const authRoutes = require("./routes/authRoutes");
 const scheduleRoutes = require("./routes/scheduleRoutes");
 const { loadSchedules, scheduleJob } = require("./services/schedulerService");
 
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    credentials: true, // Allow cookies to be sent
+  }),
+);
 app.use(express.json());
+app.use(cookieParser());
+
+// Session configuration
+app.use(
+  session({
+    secret:
+      process.env.SESSION_SECRET || "pushpilot-secret-key-change-in-production",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === "production", // HTTPS only in production
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
+  }),
+);
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Routes
 app.get("/", (req, res) => {
   res.json({
     message: "PushPilot Backend API",
-    version: "1.0.0",
+    version: "2.0.0",
     status: "running",
+    authenticated: req.isAuthenticated(),
   });
 });
+
+// Auth Routes
+app.use("/auth", authRoutes);
 
 // API Routes
 app.use("/api/schedule", scheduleRoutes);
