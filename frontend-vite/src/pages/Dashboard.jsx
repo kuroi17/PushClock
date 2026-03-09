@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import Header from "../components/Header";
 import RepoCard from "../components/RepoCard";
 import Notification from "../components/Notification";
 import { scheduleAPI } from "../services/api";
@@ -83,12 +84,10 @@ const Dashboard = () => {
         )}
 
         {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">Dashboard</h1>
-          <p className="text-gray-600">
-            Manage and monitor your scheduled GitHub pushes
-          </p>
-        </div>
+        <Header
+          title="Dashboard"
+          subtitle="Manage and monitor your scheduled GitHub pushes"
+        />
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

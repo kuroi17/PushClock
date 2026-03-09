@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import Header from "../components/Header";
 import AddRepoForm from "../components/AddRepoForm";
 import Notification from "../components/Notification";
 import { scheduleAPI } from "../services/api";
@@ -66,35 +67,10 @@ const AddSchedule = () => {
         )}
 
         {/* Page Header */}
-        <div className="mb-8">
-          <div className="flex items-center mb-4">
-            <Link
-              to="/"
-              className="text-blue-600 hover:text-blue-800 flex items-center transition-colors"
-            >
-              <svg
-                className="w-5 h-5 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                />
-              </svg>
-              Back to Dashboard
-            </Link>
-          </div>
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">
-            Schedule New Push
-          </h1>
-          <p className="text-gray-600">
-            Configure your repository and push timing
-          </p>
-        </div>
+        <Header
+          title="Schedule New Push"
+          subtitle="Configure your repository and push timing"
+        />
 
         {/* Info Card */}
         <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-8 rounded-lg">
