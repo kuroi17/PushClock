@@ -30,9 +30,13 @@ const Dashboard = () => {
         const mappedSchedules = response.data.map((schedule) => ({
           id: schedule.id,
           repoPath: schedule.repo_path,
+          repo_owner: schedule.repo_owner,
+          repo_name: schedule.repo_name,
+          github_repo_url: schedule.github_repo_url,
           branch: schedule.branch,
           pushTime: schedule.push_time,
           status: schedule.status,
+          workflow_deployed: schedule.workflow_deployed,
         }));
         setSchedules(mappedSchedules);
       }
@@ -194,6 +198,7 @@ const Dashboard = () => {
                 key={schedule.id}
                 schedule={schedule}
                 onDelete={handleDelete}
+                onUpdate={fetchSchedules}
               />
             ))}
           </div>
