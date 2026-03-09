@@ -22,6 +22,7 @@ const AddRepoForm = ({ onSubmit }) => {
     }
   };
 
+  // file system access API to select folder (note: limited browser support)
   const handleBrowseFolder = async () => {
     try {
       // Check if the browser supports the File System Access API
