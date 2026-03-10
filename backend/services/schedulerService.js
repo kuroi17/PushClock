@@ -1,22 +1,26 @@
 const schedule = require("node-schedule");
-const { exec } = require("child_process");
-const { promisify } = require("util");
 const supabase = require("../config/supabase");
-
-const execAsync = promisify(exec);
+const MergeService = require("./mergeService");
 
 // Store active jobs in memory
 const activeJobs = new Map();
 
 /**
- * Execute git push for a specific schedule
+ * Execute branch merge for a specific schedule
  */
-const executeGitPush = async (scheduleData) => {
-  const { id, repo_path, branch } = scheduleData;
+const executeMerge = async (scheduleData, accessToken) => {
+  const {
+    id,
+    repo_owner,
+    repo_name,
+    source_branch,
+    target_branch,
+    commit_message,
+  } = scheduleData;
 
-  console.log(`🚀 Executing scheduled push for schedule ${id}`);
-  console.log(`   Repo: ${repo_path}`);
-  console.log(`   Branch: ${branch}`);
+  console.log(`🔀 Executing scheduled merge for schedule ${id}`);
+  console.log(`   Repo: ${repo_owner}/${repo_name}`);
+  console.log(`   ${source_branch} → ${target_branch}`);
 
   try {
     // Update status to in-progress
@@ -28,23 +32,24 @@ const executeGitPush = async (scheduleData) => {
       })
       .eq("id", id);
 
-    // Change to repo directory and execute git push
-    const command = `cd "${repo_path}" && git push origin ${branch}`;
-
-    const { stdout, stderr } = await execAsync(command, {
-      timeout: 60000, // 60 second timeout
-      windowsHide: true,
+    // Execute the merge via GitHub API
+    const result = await MergeService.mergeBranches(accessToken, {
+      repo_owner,
+      repo_name,
+      source_branch,
+      target_branch,
+      commit_message,
     });
 
-    console.log(`✅ Push successful for schedule ${id}`);
-    if (stdout) console.log("   Output:", stdout);
-    if (stderr) console.log("   Errors:", stderr);
+    console.log(`✅ Merge successful for schedule ${id}`);
+    console.log(`   SHA: ${result.sha ? result.sha.substring(0, 7) : "N/A"}`);
 
     // Update status to completed
     await supabase
       .from("schedules")
       .update({
         status: "completed",
+        error_message: null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id);
@@ -52,9 +57,9 @@ const executeGitPush = async (scheduleData) => {
     // Remove from active jobs
     activeJobs.delete(id);
 
-    return { success: true, output: stdout };
+    return { success: true, result };
   } catch (error) {
-    console.error(`❌ Push failed for schedule ${id}:`, error.message);
+    console.error(`❌ Merge failed for schedule ${id}:`, error.message);
 
     // Update status to error
     await supabase
@@ -76,8 +81,13 @@ const executeGitPush = async (scheduleData) => {
 /**
  * Schedule a job for a specific schedule
  */
-const scheduleJob = (scheduleData) => {
+const scheduleJob = (scheduleData, accessToken) => {
   const { id, push_time } = scheduleData;
+
+  if (!accessToken) {
+    console.error(`⚠️ No access token provided for schedule ${id}`);
+    return null;
+  }
 
   // Cancel existing job if any
   if (activeJobs.has(id)) {
@@ -95,12 +105,12 @@ const scheduleJob = (scheduleData) => {
   // Create a new scheduled job
   const job = schedule.scheduleJob(pushDate, async () => {
     console.log(`⏰ Triggered: Schedule ${id} at ${new Date().toISOString()}`);
-    await executeGitPush(scheduleData);
+    await executeMerge(scheduleData, accessToken);
   });
 
   if (job) {
     activeJobs.set(id, job);
-    console.log(`📅 Scheduled job for ${id} at ${pushDate.toISOString()}`);
+    console.log(`📅 Scheduled merge for ${id} at ${pushDate.toISOString()}`);
   }
 
   return job;
@@ -113,17 +123,30 @@ const loadSchedules = async () => {
   console.log("📥 Loading schedules from database...");
 
   try {
+    // Fetch schedules with user info (need access token)
     const { data, error } = await supabase
       .from("schedules")
-      .select("*")
-      .eq("status", "scheduled");
+      .select(
+        `
+        *,
+        users!inner(access_token)
+      `,
+      )
+      .in("status", ["scheduled", "active"]);
 
     if (error) throw error;
 
     console.log(`   Found ${data.length} scheduled jobs`);
 
     data.forEach((scheduleData) => {
-      scheduleJob(scheduleData);
+      const accessToken = scheduleData.users?.access_token;
+      if (accessToken) {
+        scheduleJob(scheduleData, accessToken);
+      } else {
+        console.error(
+          `⚠️ No access token for schedule ${scheduleData.id}, skipping`,
+        );
+      }
     });
 
     return data;
@@ -154,7 +177,7 @@ const getActiveJobs = () => {
 };
 
 module.exports = {
-  executeGitPush,
+  executeMerge,
   scheduleJob,
   loadSchedules,
   cancelJob,
