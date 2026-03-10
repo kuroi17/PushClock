@@ -37,6 +37,7 @@ const Dashboard = () => {
           target_branch: schedule.target_branch,
           pushTime: schedule.push_time,
           status: schedule.status,
+          error_message: schedule.error_message,
         }));
         setSchedules(mappedSchedules);
       }
