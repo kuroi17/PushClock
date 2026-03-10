@@ -1,5 +1,5 @@
 const supabase = require("../config/supabase");
-const WorkflowService = require("../services/workflowService");
+const { scheduleJob, cancelJob } = require("../services/schedulerService");
 
 // GET all schedules
 const getAllSchedules = async (req, res) => {
@@ -84,11 +84,13 @@ const getScheduleById = async (req, res) => {
 const createSchedule = async (req, res) => {
   const {
     repo_path,
-    branch,
+    source_branch,
+    target_branch,
     push_time,
     github_repo_url,
     repo_owner,
     repo_name,
+    commit_message,
   } = req.body;
   const userId = req.user?.id;
 
@@ -100,39 +102,38 @@ const createSchedule = async (req, res) => {
     });
   }
 
-  if (!branch || !push_time) {
-    return res.status(400).json({
-      success: false,
-      message: "Missing required fields: branch, push_time",
-    });
-  }
-
-  // Require either repo_path (legacy) or github repo details
-  if (!repo_path && (!github_repo_url || !repo_owner || !repo_name)) {
+  // Require GitHub repo details and branches
+  if (!github_repo_url || !repo_owner || !repo_name) {
     return res.status(400).json({
       success: false,
       message:
-        "Either repo_path or github_repo_url/repo_owner/repo_name is required",
+        "Missing required fields: github_repo_url, repo_owner, repo_name",
+    });
+  }
+
+  if (!source_branch || !target_branch || !push_time) {
+    return res.status(400).json({
+      success: false,
+      message:
+        "Missing required fields: source_branch, target_branch, push_time",
     });
   }
 
   try {
     const scheduleData = {
       user_id: userId,
-      branch,
+      source_branch,
+      target_branch,
       push_time,
+      github_repo_url,
+      repo_owner,
+      repo_name,
+      commit_message:
+        commit_message ||
+        `Scheduled merge via PushClock: ${source_branch} → ${target_branch}`,
       status: "scheduled",
+      repo_path: null, // No longer used
     };
-
-    // Add repo details (prefer GitHub repo info)
-    if (github_repo_url && repo_owner && repo_name) {
-      scheduleData.github_repo_url = github_repo_url;
-      scheduleData.repo_owner = repo_owner;
-      scheduleData.repo_name = repo_name;
-      scheduleData.repo_path = null; // Clear legacy path
-    } else if (repo_path) {
-      scheduleData.repo_path = repo_path;
-    }
 
     const { data, error } = await supabase
       .from("schedules")
@@ -142,37 +143,24 @@ const createSchedule = async (req, res) => {
 
     if (error) throw error;
 
-    // Deploy workflow to GitHub if repo details are provided
-    let workflowDeployed = false;
-    let workflowResult = null;
-
-    if (github_repo_url && repo_owner && repo_name && req.user.access_token) {
+    // Schedule the merge job
+    if (req.user.access_token) {
       try {
-        workflowResult = await WorkflowService.deployWorkflow(
-          req.user.access_token,
-          data,
-        );
+        scheduleJob(data, req.user.access_token);
 
-        // Update schedule with workflow deployment status
+        // Update status to active
         await supabase
           .from("schedules")
           .update({
             status: "active",
-            workflow_deployed: true,
             updated_at: new Date().toISOString(),
           })
           .eq("id", data.id);
 
-        workflowDeployed = true;
-        data.workflow_deployed = true;
         data.status = "active";
-      } catch (workflowError) {
-        console.error("Error deploying workflow:", workflowError);
-        // Schedule created but workflow failed - don't fail the entire request
-        workflowResult = {
-          error: workflowError.message,
-          success: false,
-        };
+      } catch (scheduleError) {
+        console.error("Error scheduling merge:", scheduleError);
+        // Schedule created but job scheduling failed
       }
     }
 
@@ -180,16 +168,6 @@ const createSchedule = async (req, res) => {
       success: true,
       message: "Schedule created successfully",
       data,
-      workflow: workflowDeployed
-        ? {
-            deployed: true,
-            ...workflowResult,
-          }
-        : {
-            deployed: false,
-            message:
-              workflowResult?.error || "GitHub repo details not provided",
-          },
     });
   } catch (error) {
     console.error("Error creating schedule:", error);
@@ -204,16 +182,8 @@ const createSchedule = async (req, res) => {
 // PUT update schedule
 const updateSchedule = async (req, res) => {
   const { id } = req.params;
-  const {
-    repo_path,
-    branch,
-    push_time,
-    status,
-    github_repo_url,
-    repo_owner,
-    repo_name,
-    commit_message,
-  } = req.body;
+  const { source_branch, target_branch, push_time, status, commit_message } =
+    req.body;
   const userId = req.user?.id;
 
   if (!userId) {
@@ -228,13 +198,10 @@ const updateSchedule = async (req, res) => {
       updated_at: new Date().toISOString(),
     };
 
-    if (repo_path !== undefined) updateData.repo_path = repo_path;
-    if (branch) updateData.branch = branch;
+    if (source_branch) updateData.source_branch = source_branch;
+    if (target_branch) updateData.target_branch = target_branch;
     if (push_time) updateData.push_time = push_time;
     if (status) updateData.status = status;
-    if (github_repo_url) updateData.github_repo_url = github_repo_url;
-    if (repo_owner) updateData.repo_owner = repo_owner;
-    if (repo_name) updateData.repo_name = repo_name;
     if (commit_message !== undefined)
       updateData.commit_message = commit_message;
 
@@ -255,21 +222,16 @@ const updateSchedule = async (req, res) => {
       });
     }
 
-    // If schedule has GitHub repo and workflow is deployed, redeploy with updated settings
-    let workflowRedeployed = false;
+    // If push_time or branches changed, reschedule the job
     if (
-      data.workflow_deployed &&
-      data.repo_owner &&
-      data.repo_name &&
-      req.user.access_token &&
-      (branch || push_time || commit_message)
+      (push_time || source_branch || target_branch) &&
+      req.user.access_token
     ) {
       try {
-        await WorkflowService.deployWorkflow(req.user.access_token, data);
-        workflowRedeployed = true;
-      } catch (workflowError) {
-        console.error("Error redeploying workflow:", workflowError);
-        // Don't fail the update if workflow deployment fails
+        cancelJob(id); // Cancel existing job
+        scheduleJob(data, req.user.access_token); // Schedule new job
+      } catch (scheduleError) {
+        console.error("Error rescheduling merge:", scheduleError);
       }
     }
 
@@ -277,9 +239,6 @@ const updateSchedule = async (req, res) => {
       success: true,
       message: "Schedule updated successfully",
       data,
-      workflow: workflowRedeployed
-        ? { redeployed: true }
-        : { redeployed: false },
     });
   } catch (error) {
     console.error("Error updating schedule:", error);
@@ -337,6 +296,15 @@ const toggleScheduleStatus = async (req, res) => {
 
     if (error) throw error;
 
+    // Handle job scheduling/cancellation
+    if (req.user.access_token) {
+      if (newStatus === "paused") {
+        cancelJob(id); // Cancel job when paused
+      } else if (newStatus === "active") {
+        scheduleJob(data, req.user.access_token); // Reschedule when activated
+      }
+    }
+
     res.json({
       success: true,
       message: `Schedule ${newStatus === "active" ? "activated" : "paused"} successfully`,
@@ -365,6 +333,9 @@ const deleteSchedule = async (req, res) => {
   }
 
   try {
+    // Cancel scheduled job if exists
+    cancelJob(id);
+
     const { error } = await supabase
       .from("schedules")
       .delete()
