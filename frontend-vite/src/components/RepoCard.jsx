@@ -1,11 +1,8 @@
 import React, { useState } from "react";
-import workflowAPI from "../services/workflow";
 import { scheduleAPI } from "../services/api";
 import EditScheduleModal from "./EditScheduleModal";
 
 const RepoCard = ({ schedule, onDelete, onUpdate }) => {
-  // schedule object expected: { id, repo_owner, repo_name, github_repo_url, branch, pushTime, status, workflow_deployed }
-  const [deploying, setDeploying] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -37,48 +34,6 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
       ? `${schedule.repo_owner}/${schedule.repo_name}`
       : schedule?.repo_path || "/path/to/repository";
 
-  const handleDeployWorkflow = async () => {
-    try {
-      setDeploying(true);
-      const result = await workflowAPI.deploy(schedule.id);
-
-      if (result.success) {
-        alert(
-          `Workflow ${result.data.action} successfully!\n\nFile: ${result.data.workflow.filePath}`,
-        );
-        if (onUpdate) onUpdate();
-      }
-    } catch (error) {
-      console.error("Error deploying workflow:", error);
-      alert(`Failed to deploy workflow: ${error.message}`);
-    } finally {
-      setDeploying(false);
-    }
-  };
-
-  const handleRemoveWorkflow = async () => {
-    if (
-      !confirm("Are you sure you want to remove the workflow file from GitHub?")
-    ) {
-      return;
-    }
-
-    try {
-      setDeploying(true);
-      const result = await workflowAPI.remove(schedule.id);
-
-      if (result.success) {
-        alert(`Workflow ${result.data.action} successfully!`);
-        if (onUpdate) onUpdate();
-      }
-    } catch (error) {
-      console.error("Error removing workflow:", error);
-      alert(`Failed to remove workflow: ${error.message}`);
-    } finally {
-      setDeploying(false);
-    }
-  };
-
   const handleDelete = () => {
     if (confirm("Are you sure you want to delete this schedule?")) {
       if (onDelete) onDelete(schedule.id);
@@ -98,13 +53,6 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
       alert(`Failed to toggle status: ${error.message}`);
     } finally {
       setToggling(false);
-    }
-  };
-
-  const handleViewWorkflow = () => {
-    if (schedule?.repo_owner && schedule?.repo_name) {
-      const workflowUrl = `https://github.com/${schedule.repo_owner}/${schedule.repo_name}/blob/${schedule.branch || "main"}/.github/workflows/pushclock-schedule-${schedule.id}.yml`;
-      window.open(workflowUrl, "_blank");
     }
   };
 
@@ -155,9 +103,13 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
                 d="M8 7h12M8 12h12M8 17h12M3 7h.01M3 12h.01M3 17h.01"
               />
             </svg>
-            Branch:{" "}
-            <span className="font-semibold ml-1">
-              {schedule?.branch || "main"}
+            Merge:{" "}
+            <span className="font-semibold ml-1 text-blue-600">
+              {schedule?.source_branch || "pushclock-temp"}
+            </span>
+            {" → "}
+            <span className="font-semibold text-green-600">
+              {schedule?.target_branch || "main"}
             </span>
           </p>
         </div>
@@ -167,67 +119,6 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
           {schedule?.status || "Scheduled"}
         </span>
       </div>
-
-      {/* Workflow Status */}
-      {schedule?.repo_owner && schedule?.repo_name && (
-        <div className="mb-3">
-          <div className="flex items-center gap-2">
-            {schedule?.workflow_deployed ? (
-              <>
-                <span className="flex items-center text-xs text-green-700 bg-green-50 px-2 py-1 rounded-full">
-                  <svg
-                    className="w-3 h-3 mr-1"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  Workflow Deployed
-                </span>
-                <button
-                  onClick={handleViewWorkflow}
-                  className="text-xs text-blue-600 hover:text-blue-800 hover:underline flex items-center"
-                  title="View workflow in GitHub"
-                >
-                  <svg
-                    className="w-3 h-3 mr-1"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                    />
-                  </svg>
-                  View
-                </button>
-              </>
-            ) : (
-              <span className="flex items-center text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
-                <svg
-                  className="w-3 h-3 mr-1"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                No Workflow
-              </span>
-            )}
-          </div>
-        </div>
-      )}
 
       <div className="border-t border-gray-200 pt-4 mt-4">
         <div className="flex items-center justify-between">
@@ -251,159 +142,66 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
           </div>
           <div className="flex space-x-2">
             {/* Toggle Status Button (Play/Pause) */}
-            {schedule?.workflow_deployed && (
-              <button
-                onClick={handleToggleStatus}
-                disabled={toggling}
-                className={`p-2 rounded-lg transition-colors duration-200 disabled:opacity-50 ${
-                  schedule?.status === "paused"
-                    ? "text-green-600 hover:bg-green-50"
-                    : "text-yellow-600 hover:bg-yellow-50"
-                }`}
-                title={
-                  schedule?.status === "paused"
-                    ? "Resume Schedule"
-                    : "Pause Schedule"
-                }
-              >
-                {toggling ? (
-                  <svg
-                    className="w-5 h-5 animate-spin"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                ) : schedule?.status === "paused" ? (
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                ) : (
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                )}
-              </button>
-            )}
-
-            {/* Deploy/Remove Workflow Button */}
-            {schedule?.repo_owner &&
-              schedule?.repo_name &&
-              (schedule?.workflow_deployed ? (
-                <button
-                  onClick={handleRemoveWorkflow}
-                  disabled={deploying}
-                  className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors duration-200 disabled:opacity-50"
-                  title="Remove Workflow"
+            <button
+              onClick={handleToggleStatus}
+              disabled={toggling}
+              className={`p-2 rounded-lg transition-colors duration-200 disabled:opacity-50 ${
+                schedule?.status === "paused"
+                  ? "text-green-600 hover:bg-green-50"
+                  : "text-yellow-600 hover:bg-yellow-50"
+              }`}
+              title={
+                schedule?.status === "paused"
+                  ? "Resume Schedule"
+                  : "Pause Schedule"
+              }
+            >
+              {toggling ? (
+                <svg
+                  className="w-5 h-5 animate-spin"
+                  fill="none"
+                  viewBox="0 0 24 24"
                 >
-                  {deploying ? (
-                    <svg
-                      className="w-5 h-5 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                  ) : (
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
-                      />
-                    </svg>
-                  )}
-                </button>
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+              ) : schedule?.status === "paused" ? (
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                    clipRule="evenodd"
+                  />
+                </svg>
               ) : (
-                <button
-                  onClick={handleDeployWorkflow}
-                  disabled={deploying}
-                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors duration-200 disabled:opacity-50"
-                  title="Deploy Workflow"
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
                 >
-                  {deploying ? (
-                    <svg
-                      className="w-5 h-5 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                  ) : (
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-                      />
-                    </svg>
-                  )}
-                </button>
-              ))}
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              )}
+            </button>
 
             {/* Edit Button */}
             <button

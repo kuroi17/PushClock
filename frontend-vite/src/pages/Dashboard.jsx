@@ -33,10 +33,10 @@ const Dashboard = () => {
           repo_owner: schedule.repo_owner,
           repo_name: schedule.repo_name,
           github_repo_url: schedule.github_repo_url,
-          branch: schedule.branch,
+          source_branch: schedule.source_branch,
+          target_branch: schedule.target_branch,
           pushTime: schedule.push_time,
           status: schedule.status,
-          workflow_deployed: schedule.workflow_deployed,
         }));
         setSchedules(mappedSchedules);
       }

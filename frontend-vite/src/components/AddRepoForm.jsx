@@ -10,7 +10,8 @@ const AddRepoForm = ({ onSubmit }) => {
   const [selectedRepo, setSelectedRepo] = useState(null);
 
   const [formData, setFormData] = useState({
-    branch: "",
+    sourceBranch: "",
+    targetBranch: "",
     pushDate: "",
     pushTime: "",
   });
@@ -51,14 +52,19 @@ const AddRepoForm = ({ onSubmit }) => {
         );
         setBranches(repoBranches);
 
-        // Auto-select default branch if available
+        // Auto-select target branch (usually main/master)
         if (selectedRepo.default_branch) {
           setFormData((prev) => ({
             ...prev,
-            branch: selectedRepo.default_branch,
+            targetBranch: selectedRepo.default_branch,
+            sourceBranch: "pushclock-temp", // Default source branch
           }));
         } else if (repoBranches.length > 0) {
-          setFormData((prev) => ({ ...prev, branch: repoBranches[0].name }));
+          setFormData((prev) => ({
+            ...prev,
+            targetBranch: repoBranches[0].name,
+            sourceBranch: "pushclock-temp",
+          }));
         }
       } catch (error) {
         console.error("Error fetching branches:", error);
@@ -102,8 +108,12 @@ const AddRepoForm = ({ onSubmit }) => {
       newErrors.repository = "Please select a repository";
     }
 
-    if (!formData.branch.trim()) {
-      newErrors.branch = "Branch name is required";
+    if (!formData.sourceBranch.trim()) {
+      newErrors.sourceBranch = "Source branch name is required";
+    }
+
+    if (!formData.targetBranch.trim()) {
+      newErrors.targetBranch = "Target branch name is required";
     }
 
     if (!formData.pushDate) {
@@ -127,7 +137,8 @@ const AddRepoForm = ({ onSubmit }) => {
         github_repo_url: selectedRepo.html_url,
         repo_owner: selectedRepo.owner,
         repo_name: selectedRepo.name,
-        branch: formData.branch,
+        source_branch: formData.sourceBranch,
+        target_branch: formData.targetBranch,
         pushTime: pushDateTime,
       };
 
@@ -139,7 +150,8 @@ const AddRepoForm = ({ onSubmit }) => {
       setSelectedRepo(null);
       setSearchQuery("");
       setFormData({
-        branch: "",
+        sourceBranch: "",
+        targetBranch: "",
         pushDate: "",
         pushTime: "",
       });
@@ -291,66 +303,123 @@ const AddRepoForm = ({ onSubmit }) => {
       </div>
 
       {/* Branch Selection */}
-      <div className="mb-6">
-        <label
-          htmlFor="branch"
-          className="block text-sm font-semibold text-gray-700 mb-2"
-        >
-          Branch Name
-        </label>
-        {loadingBranches ? (
-          <div className="flex items-center py-3 px-4 border border-gray-300 rounded-lg">
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-            <span className="ml-3 text-gray-600">Loading branches...</span>
-          </div>
-        ) : branches.length > 0 ? (
-          <select
-            id="branch"
-            name="branch"
-            value={formData.branch}
-            onChange={handleChange}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-              errors.branch ? "border-red-500" : "border-gray-300"
-            }`}
-            disabled={!selectedRepo}
+      <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Source Branch */}
+        <div>
+          <label
+            htmlFor="sourceBranch"
+            className="block text-sm font-semibold text-gray-700 mb-2"
           >
-            <option value="">Select a branch</option>
-            {branches.map((branch) => (
-              <option key={branch.name} value={branch.name}>
-                {branch.name} {branch.protected && "(Protected)"}
-              </option>
-            ))}
-          </select>
-        ) : (
+            Source Branch (FROM)
+            <span className="text-gray-500 text-xs ml-2">
+              Where your commits are
+            </span>
+          </label>
           <input
             type="text"
-            id="branch"
-            name="branch"
-            value={formData.branch}
+            id="sourceBranch"
+            name="sourceBranch"
+            value={formData.sourceBranch}
             onChange={handleChange}
-            placeholder="e.g., main"
+            placeholder="e.g., pushclock-temp"
             className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-              errors.branch ? "border-red-500" : "border-gray-300"
+              errors.sourceBranch ? "border-red-500" : "border-gray-300"
             }`}
             disabled={!selectedRepo}
           />
-        )}
-        {errors.branch && (
-          <p className="mt-2 text-sm text-red-600 flex items-center">
-            <svg
-              className="w-4 h-4 mr-1"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                clipRule="evenodd"
-              />
-            </svg>
-            {errors.branch}
+          {errors.sourceBranch && (
+            <p className="mt-2 text-sm text-red-600 flex items-center">
+              <svg
+                className="w-4 h-4 mr-1"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              {errors.sourceBranch}
+            </p>
+          )}
+          <p className="mt-1 text-xs text-gray-500">
+            Push your commits here first:{" "}
+            <code className="bg-gray-100 px-1 rounded">
+              git push origin {formData.sourceBranch || "pushclock-temp"}
+            </code>
           </p>
-        )}
+        </div>
+
+        {/* Target Branch */}
+        <div>
+          <label
+            htmlFor="targetBranch"
+            className="block text-sm font-semibold text-gray-700 mb-2"
+          >
+            Target Branch (TO)
+            <span className="text-gray-500 text-xs ml-2">
+              Where commits will be merged
+            </span>
+          </label>
+          {loadingBranches ? (
+            <div className="flex items-center py-3 px-4 border border-gray-300 rounded-lg">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+              <span className="ml-3 text-gray-600">Loading branches...</span>
+            </div>
+          ) : branches.length > 0 ? (
+            <select
+              id="targetBranch"
+              name="targetBranch"
+              value={formData.targetBranch}
+              onChange={handleChange}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                errors.targetBranch ? "border-red-500" : "border-gray-300"
+              }`}
+              disabled={!selectedRepo}
+            >
+              <option value="">Select a branch</option>
+              {branches.map((branch) => (
+                <option key={branch.name} value={branch.name}>
+                  {branch.name} {branch.protected && "(Protected)"}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              id="targetBranch"
+              name="targetBranch"
+              value={formData.targetBranch}
+              onChange={handleChange}
+              placeholder="e.g., main"
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                errors.targetBranch ? "border-red-500" : "border-gray-300"
+              }`}
+              disabled={!selectedRepo}
+            />
+          )}
+          {errors.targetBranch && (
+            <p className="mt-2 text-sm text-red-600 flex items-center">
+              <svg
+                className="w-4 h-4 mr-1"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              {errors.targetBranch}
+            </p>
+          )}
+          <p className="mt-1 text-xs text-gray-500">
+            Usually <code className="bg-gray-100 px-1 rounded">main</code> or{" "}
+            <code className="bg-gray-100 px-1 rounded">master</code>
+          </p>
+        </div>
       </div>
 
       {/* Date and Time */}

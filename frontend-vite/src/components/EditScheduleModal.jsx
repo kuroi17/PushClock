@@ -3,7 +3,8 @@ import { scheduleAPI } from "../services/api";
 
 const EditScheduleModal = ({ schedule, isOpen, onClose, onUpdate }) => {
   const [formData, setFormData] = useState({
-    branch: "",
+    source_branch: "",
+    target_branch: "",
     push_time: "",
     commit_message: "",
   });
@@ -19,7 +20,8 @@ const EditScheduleModal = ({ schedule, isOpen, onClose, onUpdate }) => {
         : "";
 
       setFormData({
-        branch: schedule.branch || "",
+        source_branch: schedule.source_branch || "pushclock-temp",
+        target_branch: schedule.target_branch || "main",
         push_time: formattedTime,
         commit_message:
           schedule.commit_message || "Automated push by PushClock",
@@ -35,7 +37,8 @@ const EditScheduleModal = ({ schedule, isOpen, onClose, onUpdate }) => {
 
     try {
       const updateData = {
-        branch: formData.branch,
+        source_branch: formData.source_branch,
+        target_branch: formData.target_branch,
         push_time: new Date(formData.push_time).toISOString(),
         commit_message: formData.commit_message,
       };
@@ -43,9 +46,7 @@ const EditScheduleModal = ({ schedule, isOpen, onClose, onUpdate }) => {
       const result = await scheduleAPI.update(schedule.id, updateData);
 
       if (result.success) {
-        alert(
-          `Schedule updated successfully!${result.workflow?.redeployed ? "\nWorkflow has been redeployed with new settings." : ""}`,
-        );
+        alert("Schedule updated successfully!");
         if (onUpdate) onUpdate();
         onClose();
       }
@@ -110,24 +111,50 @@ const EditScheduleModal = ({ schedule, isOpen, onClose, onUpdate }) => {
             </div>
           </div>
 
-          {/* Branch */}
+          {/* Source Branch */}
           <div>
             <label
-              htmlFor="branch"
+              htmlFor="source_branch"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              Branch <span className="text-red-500">*</span>
+              Source Branch (FROM) <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              id="branch"
-              name="branch"
-              value={formData.branch}
+              id="source_branch"
+              name="source_branch"
+              value={formData.source_branch}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              placeholder="e.g., pushclock-temp"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              The branch containing your commits
+            </p>
+          </div>
+
+          {/* Target Branch */}
+          <div>
+            <label
+              htmlFor="target_branch"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Target Branch (TO) <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              id="target_branch"
+              name="target_branch"
+              value={formData.target_branch}
               onChange={handleChange}
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               placeholder="e.g., main"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              The branch to merge into
+            </p>
           </div>
 
           {/* Push Time */}
@@ -225,7 +252,7 @@ const EditScheduleModal = ({ schedule, isOpen, onClose, onUpdate }) => {
                 clipRule="evenodd"
               />
             </svg>
-            Updating will automatically redeploy the workflow with new settings.
+            Updating will reschedule the merge with new settings.
           </p>
         </form>
       </div>
