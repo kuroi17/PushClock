@@ -31,6 +31,32 @@ class MergeService {
         `🔀 Merging ${repo_owner}/${repo_name}: ${source_branch} → ${target_branch}`,
       );
 
+      // Validate branches exist before attempting merge
+      const sourceExists = await this.branchExists(
+        accessToken,
+        repo_owner,
+        repo_name,
+        source_branch,
+      );
+      const targetExists = await this.branchExists(
+        accessToken,
+        repo_owner,
+        repo_name,
+        target_branch,
+      );
+
+      if (!sourceExists) {
+        throw new Error(
+          `Source branch "${source_branch}" does not exist in ${repo_owner}/${repo_name}`,
+        );
+      }
+
+      if (!targetExists) {
+        throw new Error(
+          `Target branch "${target_branch}" does not exist in ${repo_owner}/${repo_name}`,
+        );
+      }
+
       const response = await axios.post(
         `https://api.github.com/repos/${repo_owner}/${repo_name}/merges`,
         {
