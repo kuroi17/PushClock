@@ -22,6 +22,12 @@ ALTER TABLE public.schedules
 -- Remove workflow_deployed column (not using GitHub Actions anymore)
 ALTER TABLE public.schedules DROP COLUMN IF EXISTS workflow_deployed;
 
+-- Remove old single branch column (replaced by source_branch and target_branch)
+ALTER TABLE public.schedules DROP COLUMN IF EXISTS branch;
+
+-- Make repo_path nullable (no longer required with GitHub API approach)
+ALTER TABLE public.schedules ALTER COLUMN repo_path DROP NOT NULL;
+
 -- Update status constraint to remove workflow-related statuses
 ALTER TABLE public.schedules DROP CONSTRAINT IF EXISTS schedules_status_check;
 ALTER TABLE public.schedules ADD CONSTRAINT schedules_status_check 
