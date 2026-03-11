@@ -1,6 +1,5 @@
 // POST rollback/undo merge for a schedule
 const rollbackSchedule = async (req, res) => {
-  const { logActivity } = require("../services/activityLogService");
   const { id } = req.params;
   const userId = req.user?.id;
 
@@ -125,6 +124,7 @@ const rollbackSchedule = async (req, res) => {
 };
 const supabase = require("../config/supabase");
 const { scheduleJob, cancelJob } = require("../services/schedulerService");
+const { logActivity } = require("../services/activityLogService");
 
 // GET all schedules
 const getAllSchedules = async (req, res) => {
