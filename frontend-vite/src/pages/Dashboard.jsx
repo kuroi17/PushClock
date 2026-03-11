@@ -26,7 +26,7 @@ const Dashboard = () => {
       const response = await scheduleAPI.getAll();
 
       if (response.success) {
-        // Map backend data to frontend format
+        // Map backend data to frontend format, including merge_commit_sha
         const mappedSchedules = response.data.map((schedule) => ({
           id: schedule.id,
           repoPath: schedule.repo_path,
@@ -38,6 +38,7 @@ const Dashboard = () => {
           pushTime: schedule.push_time,
           status: schedule.status,
           error_message: schedule.error_message,
+          merge_commit_sha: schedule.merge_commit_sha, // <-- ensure this is mapped
         }));
         setSchedules(mappedSchedules);
       }

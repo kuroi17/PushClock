@@ -1,15 +1,3 @@
-  // Rollback (undo) a completed merge
-  rollback: async (id) => {
-    const response = await fetch(`${API_URL}/api/schedule/${id}/rollback`, {
-      method: "POST",
-      credentials: "include",
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || "Failed to rollback merge");
-    }
-    return response.json();
-  };
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 // Schedule API endpoints
@@ -76,6 +64,19 @@ const scheduleAPI = {
     });
     if (!response.ok) {
       throw new Error("Failed to toggle schedule status");
+    }
+    return response.json();
+  },
+
+  // Rollback (undo) a completed merge
+  rollback: async (id) => {
+    const response = await fetch(`${API_URL}/api/schedule/${id}/rollback`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || "Failed to rollback merge");
     }
     return response.json();
   },
