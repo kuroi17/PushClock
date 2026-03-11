@@ -1,6 +1,6 @@
-# PushPilot Backend API
+# PushClock Backend API
 
-Backend service for PushPilot - GitHub Push Scheduler
+Backend service for PushClock - GitHub Push Scheduler
 
 ## Tech Stack
 

@@ -20,10 +20,9 @@ router.get("/:id", getScheduleById); // GET /api/schedule/:id
 router.post("/", createSchedule); // POST /api/schedule
 router.put("/:id", updateSchedule); // PUT /api/schedule/:id
 router.put("/:id/toggle", toggleScheduleStatus); // PUT /api/schedule/:id/toggle
+router.delete("/:id", deleteSchedule); // DELETE /api/schedule/:id
 
 // Rollback/undo merge endpoint
 router.post("/:id/rollback", rollbackSchedule); // POST /api/schedule/:id/rollback
-
-module.exports = router;
 
 module.exports = router;

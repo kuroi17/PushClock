@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add GitHub authentication to PushPilot so users can log in with their GitHub account and we can access their repositories.
+Add GitHub authentication to PushClock so users can log in with their GitHub account and we can access their repositories.
 
 ## What We're Building
 
@@ -21,7 +21,7 @@ Add GitHub authentication to PushPilot so users can log in with their GitHub acc
 - Go to: https://github.com/settings/developers
 - Click "New OAuth App"
 - Settings:
-  - Application name: PushPilot
+  - Application name: PushClock
   - Homepage URL: http://localhost:5173
   - Authorization callback URL: http://localhost:5000/auth/github/callback
 - Copy Client ID and Client Secret

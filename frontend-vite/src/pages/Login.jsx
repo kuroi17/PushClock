@@ -122,7 +122,7 @@ const Login = () => {
 
         {/* Footer */}
         <p className="text-center text-sm text-gray-600 mt-8">
-          By signing in, you agree to let PushPilot access your GitHub
+          By signing in, you agree to let PushClock access your GitHub
           repositories
         </p>
       </div>

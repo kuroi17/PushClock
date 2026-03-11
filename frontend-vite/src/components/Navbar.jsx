@@ -25,7 +25,7 @@ const Navbar = () => {
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <h1 className="text-2xl font-bold">PushPilot</h1>
+            <h1 className="text-2xl font-bold">Pushclock</h1>
           </Link>
           <div className="flex items-center space-x-6">
             {location.pathname !== "/" && (

@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom styles for PushPilot */
+/* Custom styles for Pushclock */
 * {
   margin: 0;
   padding: 0;
