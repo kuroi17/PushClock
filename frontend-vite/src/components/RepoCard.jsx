@@ -1,25 +1,3 @@
-const [rollbacking, setRollbacking] = useState(false);
-const [rollbackResult, setRollbackResult] = useState(null);
-const handleRollback = async () => {
-  if (
-    !window.confirm(
-      "Are you sure you want to rollback (undo) this merge? This will attempt to revert the merge commit on GitHub.",
-    )
-  ) {
-    return;
-  }
-  setRollbacking(true);
-  setRollbackResult(null);
-  try {
-    const result = await scheduleAPI.rollback(schedule.id);
-    setRollbackResult({ success: true, message: result.message });
-    if (onUpdate) onUpdate();
-  } catch (error) {
-    setRollbackResult({ success: false, message: error.message });
-  } finally {
-    setRollbacking(false);
-  }
-};
 import React, { useState } from "react";
 import { scheduleAPI } from "../services/api";
 import EditScheduleModal from "./EditScheduleModal";
@@ -28,6 +6,8 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
   const [toggling, setToggling] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [rollbacking, setRollbacking] = useState(false);
+  const [rollbackResult, setRollbackResult] = useState(null);
 
   const getStatusColor = (status) => {
     const colors = {
@@ -40,6 +20,26 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
       paused: "bg-gray-100 text-gray-800 border-gray-300",
     };
     return colors[status] || colors.scheduled;
+  };
+  const handleRollback = async () => {
+    if (
+      !window.confirm(
+        "Are you sure you want to rollback (undo) this merge? This will attempt to revert the merge commit on GitHub.",
+      )
+    ) {
+      return;
+    }
+    setRollbacking(true);
+    setRollbackResult(null);
+    try {
+      const result = await scheduleAPI.rollback(schedule.id);
+      setRollbackResult({ success: true, message: result.message });
+      if (onUpdate) onUpdate();
+    } catch (error) {
+      setRollbackResult({ success: false, message: error.message });
+    } finally {
+      setRollbacking(false);
+    }
   };
 
   const formatDateTime = (dateTime) => {
