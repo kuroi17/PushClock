@@ -77,10 +77,9 @@ const rollbackSchedule = async (req, res) => {
       })
       .eq("id", id);
 
-    // Log successful rollback
-    console.log(
-      `✅ Rollback completed for schedule ${id}: ${revertResult.sha?.substring(0, 7)}`,
-    );
+    // log the rollback attempt success
+    const shortSha = revertResult.sha?.substring(0, 7) || "N/A";
+    console.log(`✅ Rollback completed for schedule ${id}: ${shortSha}`);
 
     return res.json({
       success: true,
@@ -89,11 +88,18 @@ const rollbackSchedule = async (req, res) => {
       rollback_at: rollbackTimestamp,
     });
   } catch (err) {
+    // Log the error and send the actual error message to the frontend
     console.error("Error in rollbackSchedule:", err);
+    let errorMsg =
+      err && err.message
+        ? err.message
+        : typeof err === "string"
+          ? err
+          : "Unknown error";
     return res.status(500).json({
       success: false,
-      message: "Failed to process rollback request",
-      error: err.message,
+      message: errorMsg || "Failed to process rollback request",
+      error: err.stack || errorMsg,
     });
   }
 };

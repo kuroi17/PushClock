@@ -65,54 +65,37 @@ class MergeService {
         },
       );
 
-      console.log(
-        `✅ Revert successful: ${revertResponse.data.sha.substring(0, 7)}`,
-      );
+      const newSha = revertResponse.data?.sha || null;
+      console.log(`✅ Revert successful: ${newSha?.substring(0, 7) || "N/A"}`);
 
       return {
         success: true,
         sha: revertResponse.data.sha,
-        message: revertResponse.data.commit.message,
+        message:
+          revertResponse.data.commit?.message ||
+          "Revert operation completed, but no commit message returned.",
       };
     } catch (error) {
       console.error("Error reverting commit:", error.message);
-
+      let message = error.message;
       if (error.response) {
         const { status, data } = error.response;
-
-        // Handle specific error cases
-        if (status === 409) {
-          return {
-            success: false,
-            message:
-              "Cannot automatically revert: merge conflicts detected. Please revert manually in GitHub.",
-          };
-        }
-
-        if (status === 404) {
-          return {
-            success: false,
-            message:
-              "Commit or branch not found. The merge may have been already reverted or deleted.",
-          };
-        }
-
-        if (status === 422) {
-          return {
-            success: false,
-            message: `Revert validation failed: ${data.message || "Unknown error"}`,
-          };
-        }
-
-        return {
-          success: false,
-          message: `GitHub API error (${status}): ${data.message || error.message}`,
-        };
+        if (status === 409)
+          message =
+            "Cannot automatically revert: merge conflicts detected. Please revert manually in GitHub.";
+        else if (status === 404)
+          message =
+            "Commit or branch not found. The merge may have been already reverted or deleted.";
+        else if (status === 422)
+          message = `Revert validation failed: ${data?.message || "Unknown error"}`;
+        else
+          message = `GitHub API error (${status}): ${data?.message || error.message}`;
       }
 
       return {
         success: false,
-        message: `Revert failed: ${error.message}`,
+        sha: null,
+        message,
       };
     }
   }
