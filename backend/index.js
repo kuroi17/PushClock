@@ -26,7 +26,7 @@ app.use(cookieParser());
 app.use(
   session({
     secret:
-      process.env.SESSION_SECRET || "pushpilot-secret-key-change-in-production",
+      process.env.SESSION_SECRET || "pushclock-secret-key-change-in-production",
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -44,7 +44,7 @@ app.use(passport.session());
 // Routes
 app.get("/", (req, res) => {
   res.json({
-    message: "PushPilot Backend API",
+    message: "PushClock Backend API",
     version: "2.0.0",
     status: "running",
     authenticated: req.isAuthenticated(),

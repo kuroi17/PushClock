@@ -1,6 +1,6 @@
 {
-  "short_name": "PushPilot",
-  "name": "PushPilot - GitHub Push Scheduler",
+  "short_name": "PushClock",
+  "name": "PushClock - GitHub Push Scheduler",
   "icons": [
     {
       "src": "/logo192.png",
