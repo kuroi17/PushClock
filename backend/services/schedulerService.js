@@ -44,10 +44,11 @@ const executeMerge = async (scheduleData, accessToken) => {
     console.log(`✅ Merge successful for schedule ${id}`);
     console.log(`   SHA: ${result.sha ? result.sha.substring(0, 7) : "N/A"}`);
 
-    // Update status to completed
+    // Save merge commit SHA for rollback support
     await supabase
       .from("schedules")
       .update({
+        merge_commit_sha: result.sha || null,
         status: "completed",
         error_message: null,
         updated_at: new Date().toISOString(),

@@ -1,3 +1,102 @@
+// POST rollback/undo merge for a schedule
+const rollbackSchedule = async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      message: "User not authenticated",
+    });
+  }
+
+  try {
+    // Fetch the schedule and validate ownership
+    const { data: schedule, error } = await supabase
+      .from("schedules")
+      .select("*")
+      .eq("id", id)
+      .eq("user_id", userId)
+      .single();
+
+    if (error || !schedule) {
+      return res.status(404).json({
+        success: false,
+        message: "Schedule not found",
+      });
+    }
+
+    if (schedule.status !== "completed") {
+      return res.status(400).json({
+        success: false,
+        message: "Rollback is only allowed for completed merges.",
+      });
+    }
+
+    // Check for merge_commit_sha (should be stored after merge)
+    if (!schedule.merge_commit_sha) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "No merge commit SHA found for this schedule. Cannot rollback.",
+      });
+    }
+
+    // Call GitHub API to revert the merge commit
+    const MergeService = require("../services/mergeService");
+    const accessToken = req.user.access_token;
+    const { repo_owner, repo_name, target_branch, merge_commit_sha } = schedule;
+    const revertResult = await MergeService.revertCommit(accessToken, {
+      owner: repo_owner,
+      repo: repo_name,
+      commitSha: merge_commit_sha,
+      branch: target_branch,
+    });
+
+    if (!revertResult.success) {
+      // Log the rollback attempt failure
+      console.error(
+        `❌ Rollback failed for schedule ${id}: ${revertResult.message}`,
+      );
+
+      return res.status(500).json({
+        success: false,
+        message: `GitHub revert failed: ${revertResult.message}`,
+      });
+    }
+
+    // Update schedule with rollback information and audit timestamp
+    const rollbackTimestamp = new Date().toISOString();
+    await supabase
+      .from("schedules")
+      .update({
+        status: "rollback-completed",
+        revert_commit_sha: revertResult.sha,
+        rollback_at: rollbackTimestamp,
+        updated_at: rollbackTimestamp,
+      })
+      .eq("id", id);
+
+    // Log successful rollback
+    console.log(
+      `✅ Rollback completed for schedule ${id}: ${revertResult.sha?.substring(0, 7)}`,
+    );
+
+    return res.json({
+      success: true,
+      message: "Rollback (revert) completed successfully.",
+      revert_commit_sha: revertResult.sha,
+      rollback_at: rollbackTimestamp,
+    });
+  } catch (err) {
+    console.error("Error in rollbackSchedule:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to process rollback request",
+      error: err.message,
+    });
+  }
+};
 const supabase = require("../config/supabase");
 const { scheduleJob, cancelJob } = require("../services/schedulerService");
 
@@ -365,4 +464,5 @@ module.exports = {
   updateSchedule,
   toggleScheduleStatus,
   deleteSchedule,
+  rollbackSchedule,
 };

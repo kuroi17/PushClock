@@ -10,6 +10,7 @@
 - **Date & Time Scheduling**: Pick exact UTC date and time for automatic merges
 - **Dashboard View**: Monitor all scheduled merges and their statuses
 - **Automatic Execution**: Merges execute automatically at scheduled times using the GitHub API
+- **Rollback/Undo Merge**: Revert completed merges with one click (creates a reverse merge commit)
 - **Edit & Cancel**: Modify or remove scheduled merges as needed
 - **Error Handling & Logging**: See detailed error messages and merge results
 - **Expandable Repo Cards**: Click to view merge details, errors, and history
@@ -107,19 +108,21 @@ npm run dev
 
 - Full backend API (Express.js, Supabase, GitHub OAuth)
 - Real scheduled merges via GitHub API
+- Rollback/undo merge feature (revert completed merges)
 - Dashboard with live status, error/success details
 - Edit, cancel, and reschedule merges
 - Error handling and detailed logging
 - Modern, responsive frontend (React + Vite + Tailwind)
 - Multi-repo and multi-branch support
+- Audit logging for rollbacks
 
 ### 🚧 In Progress / Next
 
-- Rollback/undo merge feature
 - Merge preview/diff before scheduling
 - Email/in-app notifications
 - Approval workflow for merges
-- Push/merge history log
+- Comprehensive push/merge history log
+- Conflict detection before scheduling
 
 ## 🎨 UI Preview & Features
 
@@ -151,6 +154,7 @@ npm run dev
 - `POST /api/schedule` - Create new schedule
 - `PUT /api/schedule/:id` - Update schedule
 - `DELETE /api/schedule/:id` - Delete schedule
+- `POST /api/schedule/:id/rollback` - Rollback/undo a completed merge
 
 #### Example POST body
 
@@ -167,8 +171,41 @@ npm run dev
 
 ### Response fields
 
-- `status`: pending | completed | error
+- `status`: pending | completed | error | rollback-completed
 - `error_message`: error details if merge fails
+- `merge_commit_sha`: SHA of the merge commit (required for rollback)
+- `revert_commit_sha`: SHA of the revert commit (after rollback)
+
+---
+
+## 🔄 Rollback/Undo Merge Feature
+
+When a scheduled merge is completed, you can rollback (undo) the merge with one click. This creates a new commit that reverses the merge changes.
+
+### How it works
+
+1. After a merge is completed, the merge commit SHA is stored in the database
+2. In the Dashboard, click on a completed merge card to expand details
+3. Click the **Rollback** button (orange arrow icon)
+4. Confirm the rollback action
+5. PushClock creates a reverse merge commit that undoes the changes
+6. The schedule status updates to `rollback-completed`
+
+### Technical Details
+
+- Uses GitHub Merge API to create a reverse merge
+- Creates a new commit (does not rewrite history)
+- Safe for public/shared branches
+- Preserves audit trail with timestamps
+- Handles merge conflicts gracefully with clear error messages
+
+### Limitations
+
+- Only works for completed merges with a stored merge commit SHA
+- If conflicts occur during revert, manual resolution is required
+- Cannot rollback a rollback (you can re-merge instead)
+
+---
 
 ## 🤝 Contributing
 
@@ -188,12 +225,12 @@ Built with ❤️ by **kuroi17** and contributors
 
 ## 🎯 Next Steps
 
-1. Rollback/undo merge feature
-2. Merge preview/diff before scheduling
-3. Email/in-app notifications
-4. Approval workflow for merges
-5. Push/merge history log
-6. More robust error handling and analytics
+1. Merge preview/diff before scheduling
+2. Email/in-app notifications
+3. Approval workflow for merges
+4. Comprehensive push/merge history log
+5. Conflict detection before scheduling
+6. Branch protection rule integration
 
 ---
 
