@@ -132,14 +132,18 @@ const AddRepoForm = ({ onSubmit }) => {
     e.preventDefault();
 
     if (validateForm()) {
+      // Convert local datetime to ISO string (UTC)
       const pushDateTime = `${formData.pushDate}T${formData.pushTime}:00`;
+      const localDate = new Date(pushDateTime);
+      const isoDateTime = localDate.toISOString();
+
       const submitData = {
         github_repo_url: selectedRepo.html_url,
         repo_owner: selectedRepo.owner,
         repo_name: selectedRepo.name,
         source_branch: formData.sourceBranch,
         target_branch: formData.targetBranch,
-        pushTime: pushDateTime,
+        pushTime: isoDateTime,
       };
 
       if (onSubmit) {

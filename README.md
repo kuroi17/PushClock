@@ -1,173 +1,174 @@
-# PushPilot - GitHub Push Scheduler 🚀
+# PushClock - GitHub Scheduled Merge & Push Automation 🚀
 
-**PushPilot** is a full-stack application that allows you to schedule GitHub repository pushes at specific dates and times. Perfect for maintaining consistent contribution activity and automating your Git workflow.
-
----
+**PushClock** is a full-stack automation tool that lets you schedule real GitHub branch merges and pushes at specific dates and times. It is designed for teams and individuals who want to automate contribution graphs, coordinate releases, or enforce time-based code delivery. Built with Node.js, Express, Supabase, GitHub OAuth, and a modern React (Vite) frontend.
 
 ## 🎯 Features
 
-- **Add Local Repositories**: Connect your local Git repositories to the scheduler
-- **Branch Selection**: Choose which branch to push
-- **Date & Time Scheduling**: Pick exact date and time for automatic pushes
-- **Dashboard View**: Monitor all scheduled pushes in a clean, modern UI
-- **Automatic Execution**: Pushes execute automatically at scheduled times
-- **Edit & Cancel**: Modify or remove scheduled pushes as needed
-
----
+- **GitHub OAuth Integration**: Securely connect your GitHub account
+- **Add Repositories**: Register any accessible GitHub repo for scheduling
+- **Branch-to-Branch Merge Scheduling**: Schedule merges from a source branch (e.g., feature/temp) to a target branch (e.g., main)
+- **Date & Time Scheduling**: Pick exact UTC date and time for automatic merges
+- **Dashboard View**: Monitor all scheduled merges and their statuses
+- **Automatic Execution**: Merges execute automatically at scheduled times using the GitHub API
+- **Edit & Cancel**: Modify or remove scheduled merges as needed
+- **Error Handling & Logging**: See detailed error messages and merge results
+- **Expandable Repo Cards**: Click to view merge details, errors, and history
+- **Multi-Repo Support**: Manage multiple repositories from one dashboard
+- **Secure Backend**: All sensitive operations require authentication
 
 ## 🏗️ Project Structure
 
 ```
-PushPilot/
- ├─ frontend/                # React + Tailwind CSS
+PushClock/
+ ├─ frontend-vite/           # React + Vite + Tailwind CSS frontend
  │   ├─ src/
- │   │   ├─ components/      # Reusable UI components
- │   │   │   ├─ AddRepoForm.jsx
- │   │   │   ├─ RepoCard.jsx
- │   │   │   ├─ Notification.jsx
- │   │   │   └─ Navbar.jsx
- │   │   ├─ pages/           # Page components
- │   │   │   ├─ Dashboard.jsx
- │   │   │   └─ AddSchedule.jsx
- │   │   ├─ App.js           # Main app with routing
- │   │   └─ index.css        # Tailwind CSS entry
+ │   │   ├─ components/      # AddRepoForm.jsx, RepoCard.jsx, etc.
+ │   │   ├─ pages/           # Dashboard.jsx, AddSchedule.jsx, Login.jsx
+ │   │   ├─ services/        # API, GitHub, Auth helpers
+ │   │   └─ ...
  │   └─ package.json
- ├─ backend/                 # Node.js + Express (To be implemented)
- ├─ scheduler/               # Cron job scripts (To be implemented)
- ├─ database/                # SQLite/JSON storage (To be implemented)
+ ├─ backend/                 # Node.js + Express + Supabase backend
+ │   ├─ config/              # supabase.js, passport.js
+ │   ├─ controllers/         # scheduleController.js
+ │   ├─ routes/              # scheduleRoutes.js, githubRoutes.js, authRoutes.js
+ │   ├─ services/            # mergeService.js, schedulerService.js, githubService.js
+ │   ├─ database/            # schema-phaseX.sql (Supabase/PostgreSQL)
+ │   └─ ...
+ ├─ package.json             # Root dependencies (axios, etc.)
  └─ README.md
 ```
-
----
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- Node.js (v14 or higher)
-- npm or yarn
-- Git
+- Node.js (v18+ recommended)
+- npm (v9+) or yarn
+- GitHub account (for OAuth)
 
-### Installation
+### 1. Clone the repository
 
-1. **Clone the repository**
+```bash
+git clone https://github.com/yourusername/PushClock.git
+cd PushClock
+```
 
-   ```bash
-   git clone https://github.com/yourusername/PushPilot.git
-   cd PushPilot
-   ```
+### 2. Setup the backend
 
-2. **Install frontend dependencies**
+```bash
+cd backend
+npm install
+```
 
-   ```bash
-   cd frontend
-   npm install
-   ```
+1. Create a Supabase project (https://supabase.com)
+2. Copy your Supabase URL and anon key to backend/.env
+3. Run the SQL in backend/database/schema-phaseX.sql (latest phase) in Supabase SQL Editor
+4. Set up GitHub OAuth app and add credentials to .env
 
-3. **Start the development server**
+Start the backend server:
 
-   ```bash
-   npm start
-   ```
+```bash
+npm start
+# or for development:
 
-   The app will open at `http://localhost:3000`
+```
 
----
+Backend runs at http://localhost:5000
+
+### 3. Setup the frontend
+
+```bash
+cd ../frontend-vite
+npm install
+npm run dev
+```
+
+## Frontend runs at http://localhost:5173
 
 ## 🛠️ Technology Stack
 
 ### Frontend
 
-- **React** - UI library
-- **Tailwind CSS** - Styling framework
-- **React Router** - Client-side routing
+- **React** (Vite) - UI library
+- **Tailwind CSS** - Styling
+- **React Router** - Routing
 
-### Backend (Coming Soon)
+### Backend
 
-- **Node.js** - Runtime environment
-- **Express.js** - Web framework
-- **node-cron / node-schedule** - Task scheduling
-- **SQLite** - Database for storing schedules
-
----
+- **Node.js** + **Express** - API server
+- **Supabase (PostgreSQL)** - Database
+- **node-schedule** - Task scheduling
+- **GitHub OAuth** - Secure authentication
+- **Axios** - GitHub API requests
 
 ## 📋 Current Status
 
 ### ✅ Completed
 
-- [x] Frontend project structure
-- [x] React components with Tailwind CSS styling
-- [x] Dashboard page with mock data
-- [x] Add Schedule page with form validation
-- [x] Routing setup
-- [x] Responsive design
+- Full backend API (Express.js, Supabase, GitHub OAuth)
+- Real scheduled merges via GitHub API
+- Dashboard with live status, error/success details
+- Edit, cancel, and reschedule merges
+- Error handling and detailed logging
+- Modern, responsive frontend (React + Vite + Tailwind)
+- Multi-repo and multi-branch support
 
-### 🚧 To Be Implemented
+### 🚧 In Progress / Next
 
-- [ ] Backend API (Express.js)
-- [ ] Database integration (SQLite)
-- [ ] Scheduler automation (node-cron)
-- [ ] API endpoints (POST /schedule, GET /schedule, DELETE /schedule/:id)
-- [ ] Git push execution logic
-- [ ] Error handling and notifications
-- [ ] Edit schedule functionality
-- [ ] Push history log
-- [ ] Desktop notifications
+- Rollback/undo merge feature
+- Merge preview/diff before scheduling
+- Email/in-app notifications
+- Approval workflow for merges
+- Push/merge history log
 
----
-
-## 🎨 UI Preview
-
-The application features:
+## 🎨 UI Preview & Features
 
 - **Modern Gradient Design** - Blue to indigo color scheme
-- **Responsive Layout** - Works on desktop and mobile
-- **Interactive Cards** - Hover effects and smooth transitions
-- **Real-time Notifications** - Success, error, warning, and info alerts
-- **Statistics Dashboard** - View scheduled, completed, and pending pushes
-
----
+- **Responsive Layout** - Desktop and mobile friendly
+- **Interactive Repo Cards** - Expand for merge details, errors, and logs
+- **Real-time Notifications** - Success, error, warning, info
+- **Statistics Dashboard** - Scheduled, completed, failed merges
 
 ## 🔧 Development Workflow
 
-### Adding New Components
+- Frontend: Add components in frontend-vite/src/components/
+- Backend: Add routes/controllers/services in backend/
+- Use Tailwind CSS for styling
+- Use .env files for secrets (never commit them)
+- Use Supabase SQL Editor for DB migrations
 
-```bash
-# Create component in src/components/
-# Follow the existing pattern with Tailwind CSS classes
+## 📝 API Overview
+
+### Auth
+
+- `GET /api/auth/github` - Start GitHub OAuth
+- `GET /api/auth/callback` - OAuth callback
+
+### Schedules
+
+- `GET /api/schedule` - Get all schedules for user
+- `GET /api/schedule/:id` - Get single schedule
+- `POST /api/schedule` - Create new schedule
+- `PUT /api/schedule/:id` - Update schedule
+- `DELETE /api/schedule/:id` - Delete schedule
+
+#### Example POST body
+
+```json
+{
+  "repo_owner": "your-username",
+  "repo_name": "your-repo",
+  "source_branch": "feature-branch",
+  "target_branch": "main",
+  "commit_message": "Scheduled merge via PushClock",
+  "push_time": "2026-03-11T14:30:00Z"
+}
 ```
 
-### Connecting to Backend (Next Steps)
+### Response fields
 
-1. Create backend folder with Express server
-2. Set up API endpoints
-3. Implement node-cron for scheduling
-4. Update frontend components to call backend APIs
-
----
-
-## 📝 API Design (Planned)
-
-### Endpoints
-
-**POST** `/api/schedule`
-
-- Create a new push schedule
-- Body: `{ repoPath, branch, pushTime }`
-
-**GET** `/api/schedule`
-
-- Fetch all scheduled pushes
-
-**DELETE** `/api/schedule/:id`
-
-- Cancel a scheduled push
-
-**PUT** `/api/schedule/:id`
-
-- Update an existing schedule
-
----
+- `status`: pending | completed | error
+- `error_message`: error details if merge fails
 
 ## 🤝 Contributing
 
@@ -177,28 +178,23 @@ Contributions are welcome! Feel free to:
 - Suggest new features
 - Submit pull requests
 
----
-
 ## 📄 License
 
 This project is open source and available under the MIT License.
 
----
-
 ## 👨‍💻 Author
 
-Built with ❤️ by **Your Name**
-
----
+Built with ❤️ by **kuroi17** and contributors
 
 ## 🎯 Next Steps
 
-1. **Backend Development**: Set up Express server and API endpoints
-2. **Database Setup**: Implement SQLite for persistent storage
-3. **Scheduler Logic**: Integrate node-cron for automatic push execution
-4. **Testing**: Add unit and integration tests
-5. **Deployment**: Deploy backend and frontend to cloud platforms
+1. Rollback/undo merge feature
+2. Merge preview/diff before scheduling
+3. Email/in-app notifications
+4. Approval workflow for merges
+5. Push/merge history log
+6. More robust error handling and analytics
 
 ---
 
-**Happy Scheduling! 🚀**
+**Happy Scheduling & Merging! 🚀**

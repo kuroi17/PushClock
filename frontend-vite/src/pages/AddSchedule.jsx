@@ -19,12 +19,13 @@ const AddSchedule = () => {
     try {
       setIsSubmitting(true);
 
-      // formData now contains: github_repo_url, repo_owner, repo_name, branch, pushTime
+      // formData now contains: github_repo_url, repo_owner, repo_name, source_branch, target_branch, pushTime
       const scheduleData = {
         github_repo_url: formData.github_repo_url,
         repo_owner: formData.repo_owner,
         repo_name: formData.repo_name,
-        branch: formData.branch,
+        source_branch: formData.source_branch,
+        target_branch: formData.target_branch,
         push_time: formData.pushTime,
       };
 
@@ -34,7 +35,7 @@ const AddSchedule = () => {
         setNotification({
           show: true,
           type: "success",
-          message: `Push scheduled successfully for ${formData.repo_owner}/${formData.repo_name} (${formData.branch})`,
+          message: `Merge scheduled successfully for ${formData.repo_owner}/${formData.repo_name} (${formData.source_branch} → ${formData.target_branch})`,
         });
 
         // Redirect to dashboard after 2 seconds
