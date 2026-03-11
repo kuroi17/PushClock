@@ -93,5 +93,20 @@ const scheduleAPI = {
     return response.json();
   },
 };
+// Activity Log API endpoints
+const activityLogAPI = {
+  // Get activity logs for the current user (optionally filter by schedule_id or action)
+  getAll: async (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    const response = await fetch(`${API_URL}/api/activity-logs${query ? `?${query}` : ""}`, {
+      credentials: "include",
+    });
+    if (!response.ok) {
+      throw new Error("Failed to fetch activity logs");
+    }
+    return response.json();
+  },
+};
 
 export { scheduleAPI, API_URL };
+export { activityLogAPI };

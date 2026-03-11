@@ -51,17 +51,17 @@ Server will run on http://localhost:5000
 - `POST /api/schedule` - Create new schedule
 - `PUT /api/schedule/:id` - Update schedule
 - `DELETE /api/schedule/:id` - Delete schedule
+- `POST /api/schedule/:id/rollback` - Rollback (undo) a completed merge
+
+### Activity Logs (Audit Log)
+
+- `GET /api/activity-logs` - Get user activity logs (create, update, delete, rollback actions)
 
 ### Example Request
 
 ```bash
-curl -X POST http://localhost:5000/api/schedule \
-  -H "Content-Type: application/json" \
-  -d '{
-    "repo_path": "C:/Users/Dev/Projects/my-app",
-    "branch": "main",
-    "push_time": "2026-03-10T14:30:00"
-  }'
+curl -X GET http://localhost:5000/api/activity-logs \
+  -H "Cookie: ..." # Must be authenticated
 ```
 
 ## Project Structure
@@ -71,22 +71,35 @@ backend/
 ├── config/
 │   └── supabase.js       # Supabase client setup
 ├── controllers/
-│   └── scheduleController.js  # API logic
+│   ├── scheduleController.js  # Schedule API logic
+│   └── activityLogController.js # Activity log API logic
 ├── routes/
-│   └── scheduleRoutes.js      # API routes
+│   ├── scheduleRoutes.js      # Schedule API routes
+│   └── activityLogRoutes.js   # Activity log API routes
 ├── services/
-│   └── schedulerService.js    # Cron job logic
+│   ├── schedulerService.js    # Cron job logic
+│   └── activityLogService.js  # Audit log writing logic
 ├── database/
-│   └── schema.sql             # Database schema
+│   ├── schema.sql             # Main DB schema
+│   └── schema-activity-logs.sql # Activity log schema
 ├── index.js                   # Main server file
 ├── package.json
 └── .env
 ```
 
+## How Backend Folders Work Together
+
+- **controllers/**: Handle API logic. Each controller defines the business logic for an endpoint (e.g., scheduleController handles scheduling, activityLogController handles audit log queries).
+- **services/**: Contain reusable business logic and helpers. For example, schedulerService manages cron jobs, activityLogService writes audit log entries.
+- **routes/**: Define API endpoints and map them to controllers. E.g., scheduleRoutes.js maps `/api/schedule` endpoints to scheduleController methods.
+- **config/**: Setup for external services (Supabase, Passport, etc).
+- **database/**: SQL files for schema and migrations.
+- **index.js**: Main server entry point. Registers routes, middleware, and starts the server.
+
 ## How It Works
 
-1. Server starts and loads all scheduled pushes from Supabase
-2. Each schedule is registered as a cron job
-3. At the scheduled time, the server executes `git push` via child_process
-4. Status is updated in the database (completed/error)
-5. Frontend fetches and displays the data in real-time
+1. Server starts and loads all scheduled pushes from Supabase.
+2. Each schedule is registered as a cron job (via schedulerService).
+3. At the scheduled time, the server executes the merge/rollback logic and updates status in the database.
+4. All key actions (create, update, delete, rollback) are logged in the activity_logs table.
+5. Frontend fetches schedules and activity logs via API and displays them in real-time.
