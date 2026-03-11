@@ -57,6 +57,7 @@ app.use("/auth", authRoutes);
 // API Routes
 app.use("/api/schedule", scheduleRoutes);
 app.use("/api/github", githubRoutes);
+app.use("/api/activity-logs", require("./routes/activityLogRoutes"));
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

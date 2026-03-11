@@ -1,5 +1,6 @@
 // POST rollback/undo merge for a schedule
 const rollbackSchedule = async (req, res) => {
+  const { logActivity } = require("../services/activityLogService");
   const { id } = req.params;
   const userId = req.user?.id;
 
@@ -59,6 +60,14 @@ const rollbackSchedule = async (req, res) => {
         `❌ Rollback failed for schedule ${id}: ${revertResult.message}`,
       );
 
+      // Audit log: rollback failed
+      await logActivity({
+        user_id: userId,
+        action: "rollback-failed",
+        schedule_id: id,
+        details: { message: revertResult.message },
+      });
+
       return res.status(500).json({
         success: false,
         message: `GitHub revert failed: ${revertResult.message}`,
@@ -80,6 +89,17 @@ const rollbackSchedule = async (req, res) => {
     // log the rollback attempt success
     const shortSha = revertResult.sha?.substring(0, 7) || "N/A";
     console.log(`✅ Rollback completed for schedule ${id}: ${shortSha}`);
+
+    // Audit log: rollback success
+    await logActivity({
+      user_id: userId,
+      action: "rollback-success",
+      schedule_id: id,
+      details: {
+        revert_commit_sha: revertResult.sha,
+        rollback_at: rollbackTimestamp,
+      },
+    });
 
     return res.json({
       success: true,
@@ -269,6 +289,14 @@ const createSchedule = async (req, res) => {
       }
     }
 
+    // Audit log: schedule created
+    await logActivity({
+      user_id: userId,
+      action: "create-schedule",
+      schedule_id: data.id,
+      details: { source_branch, target_branch, push_time },
+    });
+
     res.status(201).json({
       success: true,
       message: "Schedule created successfully",
@@ -344,6 +372,19 @@ const updateSchedule = async (req, res) => {
       success: true,
       message: "Schedule updated successfully",
       data,
+    });
+    // Audit log: schedule updated
+    await logActivity({
+      user_id: userId,
+      action: "update-schedule",
+      schedule_id: id,
+      details: {
+        source_branch,
+        target_branch,
+        push_time,
+        status,
+        commit_message,
+      },
     });
   } catch (error) {
     console.error("Error updating schedule:", error);
@@ -452,6 +493,13 @@ const deleteSchedule = async (req, res) => {
     res.json({
       success: true,
       message: "Schedule deleted successfully",
+    });
+    // Audit log: schedule deleted
+    await logActivity({
+      user_id: userId,
+      action: "delete-schedule",
+      schedule_id: id,
+      details: {},
     });
   } catch (error) {
     console.error("Error deleting schedule:", error);

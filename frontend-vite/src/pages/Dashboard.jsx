@@ -5,6 +5,7 @@ import Header from "../components/Header";
 import RepoCard from "../components/RepoCard";
 import Notification from "../components/Notification";
 import { scheduleAPI } from "../services/api";
+import ActivityLog from "../components/ActivityLog";
 
 const Dashboard = () => {
   const [schedules, setSchedules] = useState([]);
@@ -234,6 +235,9 @@ const Dashboard = () => {
           </div>
         )}
       </div>
+
+      {/* User Activity Log Section */}
+      <ActivityLog />
     </div>
   );
 };
