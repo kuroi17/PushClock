@@ -69,12 +69,15 @@ const EditScheduleModal = ({ schedule, isOpen, onClose, onUpdate }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+      <div className="bg-bgSecondary rounded-xl shadow-lg max-w-md w-full p-6 border border-border">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">Edit Schedule</h2>
+          <h2 className="text-xl md:text-2xl font-bold text-text">
+            Edit Schedule
+          </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-textMuted hover:text-primary transition-colors"
+            aria-label="Close modal"
           >
             <svg
               className="w-6 h-6"
@@ -93,7 +96,7 @@ const EditScheduleModal = ({ schedule, isOpen, onClose, onUpdate }) => {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+          <div className="mb-4 p-3 bg-error/10 border border-error text-error rounded-lg text-sm">
             {error}
           </div>
         )}
@@ -101,10 +104,10 @@ const EditScheduleModal = ({ schedule, isOpen, onClose, onUpdate }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Repository Name (Read-only) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-text mb-2">
               Repository
             </label>
-            <div className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-600">
+            <div className="px-4 py-2 bg-bg border border-border rounded-lg text-textMuted">
               {schedule?.repo_owner && schedule?.repo_name
                 ? `${schedule.repo_owner}/${schedule.repo_name}`
                 : schedule?.repo_path || "Unknown"}
@@ -115,9 +118,9 @@ const EditScheduleModal = ({ schedule, isOpen, onClose, onUpdate }) => {
           <div>
             <label
               htmlFor="source_branch"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              className="block text-sm font-medium text-text mb-2"
             >
-              Source Branch (FROM) <span className="text-red-500">*</span>
+              Source Branch (FROM) <span className="text-error">*</span>
             </label>
             <input
               type="text"
@@ -126,10 +129,10 @@ const EditScheduleModal = ({ schedule, isOpen, onClose, onUpdate }) => {
               value={formData.source_branch}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
               placeholder="e.g., pushclock-temp"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-textMuted mt-1">
               The branch containing your commits
             </p>
           </div>
@@ -138,9 +141,9 @@ const EditScheduleModal = ({ schedule, isOpen, onClose, onUpdate }) => {
           <div>
             <label
               htmlFor="target_branch"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              className="block text-sm font-medium text-text mb-2"
             >
-              Target Branch (TO) <span className="text-red-500">*</span>
+              Target Branch (TO) <span className="text-error">*</span>
             </label>
             <input
               type="text"
@@ -149,10 +152,10 @@ const EditScheduleModal = ({ schedule, isOpen, onClose, onUpdate }) => {
               value={formData.target_branch}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
               placeholder="e.g., main"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-textMuted mt-1">
               The branch to merge into
             </p>
           </div>

@@ -7,12 +7,12 @@ const Header = ({ title, subtitle }) => {
   const isAddSchedule = location.pathname === "/add";
 
   return (
-    <div className="mb-8">
+    <header className="mb-8">
       {!isDashboard && !isAddSchedule && (
         <div className="flex items-center mb-4">
           <Link
             to="/"
-            className="text-blue-600 hover:text-blue-800 flex items-center transition-colors"
+            className="text-primary hover:text-primary-dark flex items-center transition-colors"
           >
             <svg
               className="w-5 h-5 mr-2"
@@ -31,9 +31,11 @@ const Header = ({ title, subtitle }) => {
           </Link>
         </div>
       )}
-      <h1 className="text-4xl font-bold text-gray-800 mb-2">{title}</h1>
-      <p className="text-gray-600">{subtitle}</p>
-    </div>
+      <h1 className="text-3xl md:text-4xl font-bold text-text mb-2 leading-tight">
+        {title}
+      </h1>
+      <p className="text-textMuted text-base md:text-lg">{subtitle}</p>
+    </header>
   );
 };
 

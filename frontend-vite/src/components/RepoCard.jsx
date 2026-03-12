@@ -98,14 +98,20 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
 
   return (
     <div
-      className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 p-6 border border-gray-200 cursor-pointer"
+      className="bg-bgSecondary rounded-xl shadow-md hover:shadow-lg transition-all duration-300 p-6 border border-border cursor-pointer focus-within:ring-2 focus-within:ring-primary"
+      tabIndex={0}
+      role="group"
+      aria-label={`Schedule card for ${displayName}`}
       onClick={handleCardClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") handleCardClick(e);
+      }}
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
-          <h3 className="text-lg font-bold text-gray-800 mb-2 flex items-center">
+          <h3 className="text-lg font-bold text-text mb-2 flex items-center">
             <svg
-              className="w-5 h-5 mr-2 text-gray-600"
+              className="w-5 h-5 mr-2 text-primary"
               fill="currentColor"
               viewBox="0 0 20 20"
             >
@@ -120,7 +126,7 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
                 href={schedule.github_repo_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-blue-600 transition-colors"
+                className="hover:text-primary transition-colors underline"
               >
                 {displayName}
               </a>
@@ -128,7 +134,7 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
               displayName
             )}
           </h3>
-          <p className="text-sm text-gray-600 flex items-center">
+          <p className="text-sm text-textMuted flex items-center">
             <svg
               className="w-4 h-4 mr-1"
               fill="none"
@@ -143,27 +149,28 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
               />
             </svg>
             Merge:{" "}
-            <span className="font-semibold ml-1 text-blue-600">
+            <span className="font-semibold ml-1 text-primary">
               {schedule?.source_branch || "pushclock-temp"}
             </span>
             {" → "}
-            <span className="font-semibold text-green-600">
+            <span className="font-semibold text-success">
               {schedule?.target_branch || "main"}
             </span>
           </p>
         </div>
         <span
           className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(schedule?.status || "scheduled")}`}
+          aria-label={`Status: ${schedule?.status || "Scheduled"}`}
         >
           {schedule?.status || "Scheduled"}
         </span>
       </div>
 
-      <div className="border-t border-gray-200 pt-4 mt-4">
+      <div className="border-t border-border pt-4 mt-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center text-sm text-gray-700">
+          <div className="flex items-center text-sm text-textMuted">
             <svg
-              className="w-5 h-5 mr-2 text-blue-600"
+              className="w-5 h-5 mr-2 text-info"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"

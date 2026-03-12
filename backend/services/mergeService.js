@@ -43,18 +43,34 @@ class MergeService {
         };
       }
 
-      // For a merge commit, we'll create a new merge that goes back to the first parent
-      // This effectively reverses the merge
+      // To revert a merge commit, we need to:
+      // 1. Get the tree of the first parent (state before merge)
+      // 2. Create a new commit with that tree and current HEAD as parent
+      // 3. Update the branch reference
+
       const firstParentSha = commit.parents[0].sha;
 
-      // Create a reverse merge: merge the first parent back into the current branch
-      // This creates a new commit that undoes the merge
-      const revertResponse = await axios.post(
-        `https://api.github.com/repos/${owner}/${repo}/merges`,
+      // Get the tree of the first parent (state before merge)
+      const parentCommitResponse = await axios.get(
+        `https://api.github.com/repos/${owner}/${repo}/git/commits/${firstParentSha}`,
         {
-          base: branch,
-          head: firstParentSha,
-          commit_message: `Revert merge ${commitSha.substring(0, 7)}\n\nThis reverts commit ${commitSha}`,
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/vnd.github.v3+json",
+            "User-Agent": "PushClock-App",
+          },
+        },
+      );
+
+      const revertTreeSha = parentCommitResponse.data.tree.sha;
+
+      // Create a new commit with the old tree (reverts the merge)
+      const newCommitResponse = await axios.post(
+        `https://api.github.com/repos/${owner}/${repo}/git/commits`,
+        {
+          message: `Revert merge ${commitSha.substring(0, 7)}\n\nThis reverts commit ${commitSha}`,
+          tree: revertTreeSha,
+          parents: [commitSha], // Current HEAD is the parent
         },
         {
           headers: {
@@ -65,15 +81,30 @@ class MergeService {
         },
       );
 
-      const newSha = revertResponse.data?.sha || null;
-      console.log(`✅ Revert successful: ${newSha?.substring(0, 7) || "N/A"}`);
+      const newCommitSha = newCommitResponse.data.sha;
+
+      // Update the branch to point to the new revert commit
+      await axios.patch(
+        `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`,
+        {
+          sha: newCommitSha,
+          force: false,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/vnd.github.v3+json",
+            "User-Agent": "PushClock-App",
+          },
+        },
+      );
+
+      console.log(`✅ Revert successful: ${newCommitSha.substring(0, 7)}`);
 
       return {
         success: true,
-        sha: revertResponse.data.sha,
-        message:
-          revertResponse.data.commit?.message ||
-          "Revert operation completed, but no commit message returned.",
+        sha: newCommitSha,
+        message: `Revert merge ${commitSha.substring(0, 7)}`,
       };
     } catch (error) {
       console.error("Error reverting commit:", error.message);

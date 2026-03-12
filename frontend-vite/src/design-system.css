@@ -1,0 +1,64 @@
+/* Design System Tokens for PushClock (light/dark mode)
+   - Colors, typography, spacing, shadows, transitions
+   - Used by Tailwind via @layer base and custom classes
+*/
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: #3b82f6;
+    --color-primary-dark: #1e3a8a;
+    --color-secondary: #6366f1;
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+    --color-info: #0ea5e9;
+    --color-bg: #f9fafb;
+    --color-bg-secondary: #fff;
+    --color-border: #e5e7eb;
+    --color-text: #1e293b;
+    --color-text-muted: #64748b;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --font-family-primary: "Inter", system-ui, sans-serif;
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
+    --font-size-3xl: 1.875rem;
+    --font-size-4xl: 2.25rem;
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
+    --transition-fast: 150ms ease;
+    --transition-normal: 300ms ease;
+    --transition-slow: 500ms ease;
+  }
+  [data-theme="dark"] {
+    --color-bg: #18181b;
+    --color-bg-secondary: #232336;
+    --color-border: #27272a;
+    --color-text: #f3f4f6;
+    --color-text-muted: #a1a1aa;
+  }
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-family-primary);
+  transition:
+    background 0.3s,
+    color 0.3s;
+}

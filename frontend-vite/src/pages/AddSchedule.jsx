@@ -44,7 +44,6 @@ const AddSchedule = () => {
         }, 2000);
       }
     } catch (error) {
-      console.error("Error creating schedule:", error);
       setNotification({
         show: true,
         type: "error",

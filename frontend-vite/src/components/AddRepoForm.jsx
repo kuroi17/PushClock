@@ -166,11 +166,11 @@ const AddRepoForm = ({ onSubmit }) => {
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white rounded-xl shadow-lg p-8 max-w-2xl mx-auto"
+      className="bg-bgSecondary rounded-xl shadow-md p-8 max-w-2xl mx-auto border border-border"
     >
-      <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+      <h2 className="text-2xl font-bold text-text mb-6 flex items-center">
         <svg
-          className="w-7 h-7 mr-2 text-blue-600"
+          className="w-7 h-7 mr-2 text-primary"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -189,14 +189,14 @@ const AddRepoForm = ({ onSubmit }) => {
       <div className="mb-6">
         <label
           htmlFor="repository"
-          className="block text-sm font-semibold text-gray-700 mb-2"
+          className="block text-sm font-semibold text-text mb-2"
         >
           GitHub Repository
         </label>
         {loading ? (
           <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-3 text-gray-600">Loading repositories...</span>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <span className="ml-3 text-textMuted">Loading repositories...</span>
           </div>
         ) : (
           <div className="relative">
@@ -214,14 +214,14 @@ const AddRepoForm = ({ onSubmit }) => {
                 }
               }}
               placeholder="Search your repositories..."
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                errors.repository ? "border-red-500" : "border-gray-300"
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all ${
+                errors.repository ? "border-error" : "border-border"
               }`}
             />
 
             {/* Repository Dropdown */}
             {searchQuery && !selectedRepo && filteredRepos.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+              <div className="absolute z-10 w-full mt-1 bg-bgSecondary border border-border rounded-lg shadow-lg max-h-64 overflow-y-auto">
                 {filteredRepos.map((repo) => (
                   <div
                     key={repo.id}
@@ -230,17 +230,17 @@ const AddRepoForm = ({ onSubmit }) => {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <p className="font-semibold text-gray-800">
+                        <p className="font-semibold text-text">
                           {repo.full_name}
                         </p>
                         {repo.description && (
-                          <p className="text-sm text-gray-600 mt-1">
+                          <p className="text-sm text-textMuted mt-1">
                             {repo.description}
                           </p>
                         )}
                       </div>
                       {repo.private && (
-                        <span className="ml-2 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded">
+                        <span className="ml-2 px-2 py-1 text-xs bg-warning/10 text-warning rounded">
                           Private
                         </span>
                       )}
@@ -252,13 +252,13 @@ const AddRepoForm = ({ onSubmit }) => {
 
             {/* Selected Repository Display */}
             {selectedRepo && (
-              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+              <div className="mt-2 p-3 bg-primary/10 border border-primary rounded-lg flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-blue-900">
+                  <p className="font-semibold text-primary-dark">
                     {selectedRepo.full_name}
                   </p>
                   {selectedRepo.description && (
-                    <p className="text-sm text-blue-700 mt-1">
+                    <p className="text-sm text-primary mt-1">
                       {selectedRepo.description}
                     </p>
                   )}
@@ -270,7 +270,8 @@ const AddRepoForm = ({ onSubmit }) => {
                     setSearchQuery("");
                     setBranches([]);
                   }}
-                  className="ml-2 text-blue-600 hover:text-blue-800"
+                  className="ml-2 text-primary hover:text-primary-dark"
+                  aria-label="Remove selected repository"
                 >
                   <svg
                     className="w-5 h-5"
@@ -289,7 +290,7 @@ const AddRepoForm = ({ onSubmit }) => {
           </div>
         )}
         {errors.repository && (
-          <p className="mt-2 text-sm text-red-600 flex items-center">
+          <p className="mt-2 text-sm text-error flex items-center">
             <svg
               className="w-4 h-4 mr-1"
               fill="currentColor"
@@ -312,10 +313,10 @@ const AddRepoForm = ({ onSubmit }) => {
         <div>
           <label
             htmlFor="sourceBranch"
-            className="block text-sm font-semibold text-gray-700 mb-2"
+            className="block text-sm font-semibold text-text mb-2"
           >
             Source Branch (FROM)
-            <span className="text-gray-500 text-xs ml-2">
+            <span className="text-textMuted text-xs ml-2">
               Where your commits are
             </span>
           </label>
@@ -326,13 +327,13 @@ const AddRepoForm = ({ onSubmit }) => {
             value={formData.sourceBranch}
             onChange={handleChange}
             placeholder="e.g., pushclock-temp"
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-              errors.sourceBranch ? "border-red-500" : "border-gray-300"
+            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all ${
+              errors.sourceBranch ? "border-error" : "border-border"
             }`}
             disabled={!selectedRepo}
           />
           {errors.sourceBranch && (
-            <p className="mt-2 text-sm text-red-600 flex items-center">
+            <p className="mt-2 text-sm text-error flex items-center">
               <svg
                 className="w-4 h-4 mr-1"
                 fill="currentColor"
@@ -347,9 +348,9 @@ const AddRepoForm = ({ onSubmit }) => {
               {errors.sourceBranch}
             </p>
           )}
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-textMuted">
             Push your commits here first:{" "}
-            <code className="bg-gray-100 px-1 rounded">
+            <code className="bg-bg px-1 rounded">
               git push origin {formData.sourceBranch || "pushclock-temp"}
             </code>
           </p>
@@ -359,17 +360,17 @@ const AddRepoForm = ({ onSubmit }) => {
         <div>
           <label
             htmlFor="targetBranch"
-            className="block text-sm font-semibold text-gray-700 mb-2"
+            className="block text-sm font-semibold text-text mb-2"
           >
             Target Branch (TO)
-            <span className="text-gray-500 text-xs ml-2">
+            <span className="text-textMuted text-xs ml-2">
               Where commits will be merged
             </span>
           </label>
           {loadingBranches ? (
-            <div className="flex items-center py-3 px-4 border border-gray-300 rounded-lg">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-              <span className="ml-3 text-gray-600">Loading branches...</span>
+            <div className="flex items-center py-3 px-4 border border-border rounded-lg">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+              <span className="ml-3 text-textMuted">Loading branches...</span>
             </div>
           ) : branches.length > 0 ? (
             <select
@@ -377,8 +378,8 @@ const AddRepoForm = ({ onSubmit }) => {
               name="targetBranch"
               value={formData.targetBranch}
               onChange={handleChange}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                errors.targetBranch ? "border-red-500" : "border-gray-300"
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all ${
+                errors.targetBranch ? "border-error" : "border-border"
               }`}
               disabled={!selectedRepo}
             >
@@ -397,14 +398,14 @@ const AddRepoForm = ({ onSubmit }) => {
               value={formData.targetBranch}
               onChange={handleChange}
               placeholder="e.g., main"
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                errors.targetBranch ? "border-red-500" : "border-gray-300"
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all ${
+                errors.targetBranch ? "border-error" : "border-border"
               }`}
               disabled={!selectedRepo}
             />
           )}
           {errors.targetBranch && (
-            <p className="mt-2 text-sm text-red-600 flex items-center">
+            <p className="mt-2 text-sm text-error flex items-center">
               <svg
                 className="w-4 h-4 mr-1"
                 fill="currentColor"
@@ -419,9 +420,9 @@ const AddRepoForm = ({ onSubmit }) => {
               {errors.targetBranch}
             </p>
           )}
-          <p className="mt-1 text-xs text-gray-500">
-            Usually <code className="bg-gray-100 px-1 rounded">main</code> or{" "}
-            <code className="bg-gray-100 px-1 rounded">master</code>
+          <p className="mt-1 text-xs text-textMuted">
+            Usually <code className="bg-bg px-1 rounded">main</code> or{" "}
+            <code className="bg-bg px-1 rounded">master</code>
           </p>
         </div>
       </div>
@@ -431,7 +432,7 @@ const AddRepoForm = ({ onSubmit }) => {
         <div>
           <label
             htmlFor="pushDate"
-            className="block text-sm font-semibold text-gray-700 mb-2"
+            className="block text-sm font-semibold text-text mb-2"
           >
             Push Date
           </label>
@@ -441,19 +442,19 @@ const AddRepoForm = ({ onSubmit }) => {
             name="pushDate"
             value={formData.pushDate}
             onChange={handleChange}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-              errors.pushDate ? "border-red-500" : "border-gray-300"
+            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all ${
+              errors.pushDate ? "border-error" : "border-border"
             }`}
           />
           {errors.pushDate && (
-            <p className="mt-2 text-sm text-red-600">{errors.pushDate}</p>
+            <p className="mt-2 text-sm text-error">{errors.pushDate}</p>
           )}
         </div>
 
         <div>
           <label
             htmlFor="pushTime"
-            className="block text-sm font-semibold text-gray-700 mb-2"
+            className="block text-sm font-semibold text-text mb-2"
           >
             Push Time
           </label>
@@ -463,12 +464,12 @@ const AddRepoForm = ({ onSubmit }) => {
             name="pushTime"
             value={formData.pushTime}
             onChange={handleChange}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-              errors.pushTime ? "border-red-500" : "border-gray-300"
+            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all ${
+              errors.pushTime ? "border-error" : "border-border"
             }`}
           />
           {errors.pushTime && (
-            <p className="mt-2 text-sm text-red-600">{errors.pushTime}</p>
+            <p className="mt-2 text-sm text-error">{errors.pushTime}</p>
           )}
         </div>
       </div>
@@ -477,7 +478,7 @@ const AddRepoForm = ({ onSubmit }) => {
       <div className="flex justify-end">
         <button
           type="submit"
-          className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-lg hover:from-blue-700 hover:to-indigo-800 transition-all duration-200 font-medium shadow-lg hover:shadow-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-8 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-all duration-200 font-medium shadow-md hover:shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={loading || !selectedRepo}
         >
           <svg

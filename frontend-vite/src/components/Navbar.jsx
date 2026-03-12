@@ -28,6 +28,43 @@ const Navbar = () => {
             <h1 className="text-2xl font-bold">Pushclock</h1>
           </Link>
           <div className="flex items-center space-x-6">
+            {/* Theme Toggle */}
+            <div
+              className="theme-toggle flex items-center bg-bgSecondary border border-border rounded-full px-1 py-1 mr-4"
+              role="radiogroup"
+              aria-label="Theme selection"
+            >
+              <button
+                className="theme-toggle-option px-3 py-1 rounded-full text-sm font-medium text-textMuted hover:bg-primary/10 transition-colors"
+                data-theme="light"
+                role="radio"
+                aria-checked="false"
+                type="button"
+              >
+                <span aria-hidden="true">☀️</span>
+                <span className="sr-only">Light</span>
+              </button>
+              <button
+                className="theme-toggle-option px-3 py-1 rounded-full text-sm font-medium text-textMuted hover:bg-primary/10 transition-colors"
+                data-theme="dark"
+                role="radio"
+                aria-checked="false"
+                type="button"
+              >
+                <span aria-hidden="true">🌙</span>
+                <span className="sr-only">Dark</span>
+              </button>
+              <button
+                className="theme-toggle-option px-3 py-1 rounded-full text-sm font-medium text-textMuted hover:bg-primary/10 transition-colors"
+                data-theme="system"
+                role="radio"
+                aria-checked="true"
+                type="button"
+              >
+                <span aria-hidden="true">💻</span>
+                <span className="sr-only">System</span>
+              </button>
+            </div>
             {location.pathname !== "/" && (
               <Link
                 to="/"
@@ -57,7 +94,7 @@ const Navbar = () => {
                       user.avatar_url ||
                       `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`
                     }
-                    alt={user.username} 
+                    alt={user.username}
                     className="w-8 h-8 rounded-full border-2 border-white"
                   />
                   <span className="font-medium">{user.username}</span>
