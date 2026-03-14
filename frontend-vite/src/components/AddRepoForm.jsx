@@ -21,6 +21,13 @@ const AddRepoForm = ({ onSubmit }) => {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState("");
   const [mergePreview, setMergePreview] = useState(null);
+  const [previewSelectionKey, setPreviewSelectionKey] = useState("");
+  const [previewAcknowledged, setPreviewAcknowledged] = useState(false);
+
+  const buildPreviewSelectionKey = (repo, sourceBranch, targetBranch) => {
+    if (!repo || !sourceBranch || !targetBranch) return "";
+    return `${repo.owner}/${repo.name}:${sourceBranch}->${targetBranch}`;
+  };
 
   // Fetch user's repositories on mount
   useEffect(() => {
@@ -47,6 +54,8 @@ const AddRepoForm = ({ onSubmit }) => {
         setBranches([]);
         setMergePreview(null);
         setPreviewError("");
+        setPreviewSelectionKey("");
+        setPreviewAcknowledged(false);
         return;
       }
 
@@ -97,6 +106,9 @@ const AddRepoForm = ({ onSubmit }) => {
     if (name === "sourceBranch" || name === "targetBranch") {
       setMergePreview(null);
       setPreviewError("");
+      setPreviewSelectionKey("");
+      setPreviewAcknowledged(false);
+      setErrors((prev) => ({ ...prev, preview: "" }));
     }
   };
 
@@ -106,6 +118,8 @@ const AddRepoForm = ({ onSubmit }) => {
     setErrors((prev) => ({ ...prev, repository: "" }));
     setMergePreview(null);
     setPreviewError("");
+    setPreviewSelectionKey("");
+    setPreviewAcknowledged(false);
   };
 
   const filteredRepos = repositories.filter(
@@ -135,6 +149,32 @@ const AddRepoForm = ({ onSubmit }) => {
 
     if (!formData.pushTime) {
       newErrors.pushTime = "Push time is required";
+    }
+
+    const currentSelectionKey = buildPreviewSelectionKey(
+      selectedRepo,
+      formData.sourceBranch,
+      formData.targetBranch,
+    );
+
+    if (!mergePreview || previewSelectionKey !== currentSelectionKey) {
+      newErrors.preview =
+        "Please run Preview Changes for the current source and target branches before scheduling.";
+    } else {
+      const filesChanged = mergePreview.summary?.files_changed || 0;
+      const commitsCount = mergePreview.total_commits || 0;
+
+      if (
+        mergePreview.status === "identical" ||
+        filesChanged === 0 ||
+        commitsCount === 0
+      ) {
+        newErrors.preview =
+          "No mergeable changes found for this branch pair. Select a different source/target branch.";
+      } else if (!previewAcknowledged) {
+        newErrors.preview =
+          "Please confirm that you reviewed the merge preview.";
+      }
     }
 
     setErrors(newErrors);
@@ -174,8 +214,19 @@ const AddRepoForm = ({ onSubmit }) => {
       });
 
       setMergePreview(response.preview || null);
+      setPreviewSelectionKey(
+        buildPreviewSelectionKey(
+          selectedRepo,
+          formData.sourceBranch,
+          formData.targetBranch,
+        ),
+      );
+      setPreviewAcknowledged(false);
+      setErrors((prev) => ({ ...prev, preview: "" }));
     } catch (error) {
       setPreviewError(error.message || "Failed to preview merge changes");
+      setPreviewSelectionKey("");
+      setPreviewAcknowledged(false);
     } finally {
       setPreviewLoading(false);
     }
@@ -215,6 +266,8 @@ const AddRepoForm = ({ onSubmit }) => {
       setBranches([]);
       setMergePreview(null);
       setPreviewError("");
+      setPreviewSelectionKey("");
+      setPreviewAcknowledged(false);
     }
   };
 
@@ -230,6 +283,35 @@ const AddRepoForm = ({ onSubmit }) => {
 
     return styles[status] || "bg-gray-100 text-gray-700 border-gray-300";
   };
+
+  const getPreviewStatusStyle = (status) => {
+    const styles = {
+      ahead: "bg-green-100 text-green-700 border-green-300",
+      identical: "bg-gray-100 text-gray-700 border-gray-300",
+      diverged: "bg-orange-100 text-orange-800 border-orange-300",
+      behind: "bg-blue-100 text-blue-700 border-blue-300",
+    };
+
+    return styles[status] || "bg-gray-100 text-gray-700 border-gray-300";
+  };
+
+  const currentSelectionKey = buildPreviewSelectionKey(
+    selectedRepo,
+    formData.sourceBranch,
+    formData.targetBranch,
+  );
+  const hasFreshPreview =
+    Boolean(mergePreview) && previewSelectionKey === currentSelectionKey;
+  const hasNoMergeableChanges =
+    hasFreshPreview &&
+    (mergePreview.status === "identical" ||
+      (mergePreview.summary?.files_changed || 0) === 0 ||
+      (mergePreview.total_commits || 0) === 0);
+  const previewGuardBlocked =
+    !selectedRepo ||
+    !hasFreshPreview ||
+    !previewAcknowledged ||
+    hasNoMergeableChanges;
 
   return (
     <form
@@ -339,6 +421,8 @@ const AddRepoForm = ({ onSubmit }) => {
                     setBranches([]);
                     setMergePreview(null);
                     setPreviewError("");
+                    setPreviewSelectionKey("");
+                    setPreviewAcknowledged(false);
                   }}
                   className="ml-2 text-primary hover:text-primary-dark"
                   aria-label="Remove selected repository"
@@ -522,14 +606,44 @@ const AddRepoForm = ({ onSubmit }) => {
           </div>
         )}
 
+        {errors.preview && (
+          <div className="mb-3 p-3 rounded-lg border border-error/30 bg-error/10 text-error text-sm">
+            {errors.preview}
+          </div>
+        )}
+
         {mergePreview && (
           <div className="rounded-xl border border-border bg-bg p-4">
-            <div className="mb-4">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-textMuted">
                 {mergePreview.repository} | {mergePreview.from} to{" "}
                 {mergePreview.to}
               </p>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`px-2 py-1 rounded text-xs font-semibold border ${getPreviewStatusStyle(mergePreview.status)}`}
+                >
+                  {mergePreview.status || "unknown"}
+                </span>
+                {mergePreview.html_url && (
+                  <a
+                    href={mergePreview.html_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold underline text-info"
+                  >
+                    Open Full Diff on GitHub
+                  </a>
+                )}
+              </div>
             </div>
+
+            {mergePreview.status === "diverged" && (
+              <div className="mb-4 p-3 rounded-lg border border-orange-300 bg-orange-50 text-orange-900 text-sm">
+                Branches are diverged. Auto-merge may fail with conflicts unless
+                history is reconciled first.
+              </div>
+            )}
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
               <div className="rounded-lg border border-border bg-bgSecondary p-3">
@@ -635,6 +749,27 @@ const AddRepoForm = ({ onSubmit }) => {
                 </p>
               )}
             </div>
+
+            <div className="mt-4 pt-4 border-t border-border">
+              <label className="flex items-start gap-2 text-sm text-text">
+                <input
+                  type="checkbox"
+                  checked={previewAcknowledged}
+                  onChange={(e) => {
+                    setPreviewAcknowledged(e.target.checked);
+                    if (e.target.checked) {
+                      setErrors((prev) => ({ ...prev, preview: "" }));
+                    }
+                  }}
+                  className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                />
+                <span>
+                  {mergePreview.status === "diverged"
+                    ? "I reviewed this preview and understand this merge may require manual conflict resolution."
+                    : "I reviewed this preview and confirm the merge content is correct."}
+                </span>
+              </label>
+            </div>
           </div>
         )}
       </div>
@@ -691,7 +826,7 @@ const AddRepoForm = ({ onSubmit }) => {
         <button
           type="submit"
           className="px-8 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-all duration-200 font-medium shadow-md hover:shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={loading || !selectedRepo}
+          disabled={loading || previewLoading || previewGuardBlocked}
         >
           <svg
             className="w-5 h-5"
