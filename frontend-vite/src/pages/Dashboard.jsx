@@ -39,6 +39,7 @@ const Dashboard = () => {
           status: schedule.status,
           error_message: schedule.error_message,
           merge_commit_sha: schedule.merge_commit_sha, // <-- ensure this is mapped
+          revert_commit_sha: schedule.revert_commit_sha,
         }));
         setSchedules(mappedSchedules);
       }

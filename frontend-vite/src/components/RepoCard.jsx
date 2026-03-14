@@ -13,6 +13,7 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
     const colors = {
       pending: "bg-yellow-100 text-yellow-800 border-yellow-300",
       completed: "bg-green-100 text-green-800 border-green-300",
+      "rollback-completed": "bg-cyan-100 text-cyan-800 border-cyan-300",
       failed: "bg-red-100 text-red-800 border-red-300",
       error: "bg-red-100 text-red-800 border-red-300",
       scheduled: "bg-blue-100 text-blue-800 border-blue-300",
@@ -33,7 +34,12 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
     setRollbackResult(null);
     try {
       const result = await scheduleAPI.rollback(schedule.id);
-      setRollbackResult({ success: true, message: result.message });
+      setRollbackResult({
+        success: true,
+        message: result.message,
+        revertCommitSha: result.revert_commit_sha || null,
+        revertCommitUrl: result.revert_commit_url || null,
+      });
       if (onUpdate) onUpdate();
     } catch (error) {
       setRollbackResult({ success: false, message: error.message });
@@ -57,6 +63,11 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
     schedule?.repo_owner && schedule?.repo_name
       ? `${schedule.repo_owner}/${schedule.repo_name}`
       : schedule?.repo_path || "/path/to/repository";
+
+  const persistedRollbackCommitUrl =
+    schedule?.github_repo_url && schedule?.revert_commit_sha
+      ? `${schedule.github_repo_url}/commit/${schedule.revert_commit_sha}`
+      : null;
 
   const handleDelete = () => {
     if (confirm("Are you sure you want to delete this schedule?")) {
@@ -232,14 +243,6 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
               )}
             </button>
           )}
-          {/* Rollback Result Message */}
-          {rollbackResult && (
-            <div
-              className={`mt-3 p-2 rounded text-xs ${rollbackResult.success ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}
-            >
-              {rollbackResult.message}
-            </div>
-          )}
           <div className="flex space-x-2">
             {/* Toggle Status Button (Play/Pause) */}
             <button
@@ -346,6 +349,31 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
             </button>
           </div>
         </div>
+
+        {/* Rollback Result Message */}
+        {rollbackResult && (
+          <div
+            className={`mt-3 p-3 rounded text-xs ${rollbackResult.success ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}
+          >
+            <p>{rollbackResult.message}</p>
+            {rollbackResult.success && rollbackResult.revertCommitSha && (
+              <p className="mt-1 text-[11px] opacity-80">
+                Revert commit: {rollbackResult.revertCommitSha.substring(0, 7)}
+              </p>
+            )}
+            {rollbackResult.success && rollbackResult.revertCommitUrl && (
+              <a
+                href={rollbackResult.revertCommitUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-block underline font-semibold"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Open Revert Commit on GitHub
+              </a>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Expandable Details Section */}
@@ -478,6 +506,49 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
                     Branches were merged successfully. Check your repository on
                     GitHub.
                   </span>
+                </div>
+              </div>
+            )}
+
+            {/* Rollback Success Message */}
+            {schedule?.status === "rollback-completed" && (
+              <div className="flex items-start mt-3 p-3 bg-cyan-50 border border-cyan-200 rounded-lg">
+                <svg
+                  className="w-5 h-5 text-cyan-700 mr-2 flex-shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 10h11a4 4 0 110 8h-1m0 0l3-3m-3 3l3 3"
+                  />
+                </svg>
+                <div className="flex-1">
+                  <span className="font-semibold text-cyan-900 block mb-1">
+                    Rollback Completed
+                  </span>
+                  <span className="text-cyan-800 text-xs block">
+                    Merge changes were reverted on GitHub.
+                  </span>
+                  {schedule?.revert_commit_sha && (
+                    <span className="text-cyan-900 text-xs font-medium block mt-1">
+                      SHA: {schedule.revert_commit_sha.substring(0, 7)}
+                    </span>
+                  )}
+                  {persistedRollbackCommitUrl && (
+                    <a
+                      href={persistedRollbackCommitUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-semibold underline mt-2 inline-block text-cyan-900"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Open Revert Commit on GitHub
+                    </a>
+                  )}
                 </div>
               </div>
             )}
