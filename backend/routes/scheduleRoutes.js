@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   getAllSchedules,
   getScheduleById,
+  previewMergeChanges,
   createSchedule,
   updateSchedule,
   toggleScheduleStatus,
@@ -17,6 +18,7 @@ router.use(isAuthenticated);
 // Routes
 router.get("/", getAllSchedules); // GET /api/schedule
 router.get("/:id", getScheduleById); // GET /api/schedule/:id
+router.post("/preview", previewMergeChanges); // POST /api/schedule/preview
 router.post("/", createSchedule); // POST /api/schedule
 router.put("/:id", updateSchedule); // PUT /api/schedule/:id
 router.put("/:id/toggle", toggleScheduleStatus); // PUT /api/schedule/:id/toggle

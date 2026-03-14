@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import githubAPI from "../services/github";
+import { scheduleAPI } from "../services/api";
 
 const AddRepoForm = ({ onSubmit }) => {
   const [repositories, setRepositories] = useState([]);
@@ -17,6 +18,9 @@ const AddRepoForm = ({ onSubmit }) => {
   });
 
   const [errors, setErrors] = useState({});
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
+  const [mergePreview, setMergePreview] = useState(null);
 
   // Fetch user's repositories on mount
   useEffect(() => {
@@ -41,6 +45,8 @@ const AddRepoForm = ({ onSubmit }) => {
     const fetchBranches = async () => {
       if (!selectedRepo) {
         setBranches([]);
+        setMergePreview(null);
+        setPreviewError("");
         return;
       }
 
@@ -87,12 +93,19 @@ const AddRepoForm = ({ onSubmit }) => {
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
+
+    if (name === "sourceBranch" || name === "targetBranch") {
+      setMergePreview(null);
+      setPreviewError("");
+    }
   };
 
   const handleRepoSelect = (repo) => {
     setSelectedRepo(repo);
     setSearchQuery(repo.full_name);
     setErrors((prev) => ({ ...prev, repository: "" }));
+    setMergePreview(null);
+    setPreviewError("");
   };
 
   const filteredRepos = repositories.filter(
@@ -128,6 +141,46 @@ const AddRepoForm = ({ onSubmit }) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handlePreview = async () => {
+    const newErrors = {};
+
+    if (!selectedRepo) {
+      newErrors.repository = "Please select a repository";
+    }
+
+    if (!formData.sourceBranch.trim()) {
+      newErrors.sourceBranch = "Source branch name is required";
+    }
+
+    if (!formData.targetBranch.trim()) {
+      newErrors.targetBranch = "Target branch name is required";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors((prev) => ({ ...prev, ...newErrors }));
+      return;
+    }
+
+    try {
+      setPreviewLoading(true);
+      setPreviewError("");
+      setMergePreview(null);
+
+      const response = await scheduleAPI.previewMerge({
+        repo_owner: selectedRepo.owner,
+        repo_name: selectedRepo.name,
+        source_branch: formData.sourceBranch,
+        target_branch: formData.targetBranch,
+      });
+
+      setMergePreview(response.preview || null);
+    } catch (error) {
+      setPreviewError(error.message || "Failed to preview merge changes");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -160,7 +213,22 @@ const AddRepoForm = ({ onSubmit }) => {
         pushTime: "",
       });
       setBranches([]);
+      setMergePreview(null);
+      setPreviewError("");
     }
+  };
+
+  const getStatusStyle = (status) => {
+    const styles = {
+      added: "bg-green-100 text-green-700 border-green-300",
+      modified: "bg-yellow-100 text-yellow-800 border-yellow-300",
+      removed: "bg-red-100 text-red-700 border-red-300",
+      renamed: "bg-blue-100 text-blue-700 border-blue-300",
+      copied: "bg-indigo-100 text-indigo-700 border-indigo-300",
+      changed: "bg-gray-100 text-gray-700 border-gray-300",
+    };
+
+    return styles[status] || "bg-gray-100 text-gray-700 border-gray-300";
   };
 
   return (
@@ -269,6 +337,8 @@ const AddRepoForm = ({ onSubmit }) => {
                     setSelectedRepo(null);
                     setSearchQuery("");
                     setBranches([]);
+                    setMergePreview(null);
+                    setPreviewError("");
                   }}
                   className="ml-2 text-primary hover:text-primary-dark"
                   aria-label="Remove selected repository"
@@ -425,6 +495,148 @@ const AddRepoForm = ({ onSubmit }) => {
             <code className="bg-bg px-1 rounded">master</code>
           </p>
         </div>
+      </div>
+
+      {/* Merge Preview */}
+      <div className="mb-8">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div>
+            <h3 className="text-base font-semibold text-text">Merge Preview</h3>
+            <p className="text-sm text-textMuted">
+              Review commits and file diffs before scheduling the merge.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handlePreview}
+            disabled={previewLoading || !selectedRepo}
+            className="px-4 py-2 bg-info text-white rounded-lg hover:bg-info/90 transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {previewLoading ? "Loading preview..." : "Preview Changes"}
+          </button>
+        </div>
+
+        {previewError && (
+          <div className="mb-3 p-3 rounded-lg border border-error/30 bg-error/10 text-error text-sm">
+            {previewError}
+          </div>
+        )}
+
+        {mergePreview && (
+          <div className="rounded-xl border border-border bg-bg p-4">
+            <div className="mb-4">
+              <p className="text-sm text-textMuted">
+                {mergePreview.repository} | {mergePreview.from} to{" "}
+                {mergePreview.to}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              <div className="rounded-lg border border-border bg-bgSecondary p-3">
+                <p className="text-xs text-textMuted">Commits</p>
+                <p className="text-lg font-bold text-text">
+                  {mergePreview.total_commits || 0}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-bgSecondary p-3">
+                <p className="text-xs text-textMuted">Files Changed</p>
+                <p className="text-lg font-bold text-text">
+                  {mergePreview.summary?.files_changed || 0}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-bgSecondary p-3">
+                <p className="text-xs text-textMuted">Additions</p>
+                <p className="text-lg font-bold text-success">
+                  +{mergePreview.summary?.total_additions || 0}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-bgSecondary p-3">
+                <p className="text-xs text-textMuted">Deletions</p>
+                <p className="text-lg font-bold text-error">
+                  -{mergePreview.summary?.total_deletions || 0}
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <h4 className="text-sm font-semibold text-text mb-2">
+                Commits To Be Merged
+              </h4>
+              {mergePreview.commits?.length > 0 ? (
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {mergePreview.commits.slice(0, 10).map((commit) => (
+                    <div
+                      key={commit.sha}
+                      className="rounded-md border border-border bg-bgSecondary p-3"
+                    >
+                      <p className="text-sm font-medium text-text">
+                        {commit.short_message || commit.message}
+                      </p>
+                      <p className="text-xs text-textMuted mt-1">
+                        {commit.sha.substring(0, 7)} | {commit.author}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-textMuted">
+                  No commits to merge. Branches may already be synchronized.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <h4 className="text-sm font-semibold text-text mb-2">
+                Files Changed
+              </h4>
+              {mergePreview.files?.length > 0 ? (
+                <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                  {mergePreview.files.slice(0, 12).map((file) => (
+                    <div
+                      key={file.filename}
+                      className="rounded-md border border-border bg-bgSecondary p-3"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-text break-all">
+                          {file.filename}
+                        </p>
+                        <span
+                          className={`px-2 py-0.5 text-xs font-semibold rounded border ${getStatusStyle(file.status)}`}
+                        >
+                          {file.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-textMuted mt-1">
+                        +{file.additions || 0} / -{file.deletions || 0}
+                      </p>
+
+                      {file.patch ? (
+                        <pre className="mt-2 text-xs text-text bg-bg rounded p-2 overflow-x-auto whitespace-pre-wrap break-all">
+                          {file.patch.split("\n").slice(0, 10).join("\n")}
+                        </pre>
+                      ) : (
+                        <p className="mt-2 text-xs text-textMuted">
+                          No textual diff available (binary or large file).
+                        </p>
+                      )}
+                    </div>
+                  ))}
+
+                  {mergePreview.files.length > 12 && (
+                    <p className="text-xs text-textMuted">
+                      Showing first 12 files. Open compare URL in GitHub for
+                      full diff.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-textMuted">
+                  No file changes detected for this merge.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Date and Time */}

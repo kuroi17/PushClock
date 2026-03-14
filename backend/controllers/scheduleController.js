@@ -235,6 +235,77 @@ const getScheduleById = async (req, res) => {
   }
 };
 
+// POST preview merge changes for selected branches
+const previewMergeChanges = async (req, res) => {
+  const userId = req.user?.id;
+  const accessToken = req.user?.access_token;
+  const { repo_owner, repo_name, source_branch, target_branch } = req.body;
+
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      message: "User not authenticated",
+    });
+  }
+
+  if (!accessToken) {
+    return res.status(401).json({
+      success: false,
+      message: "GitHub access token not found. Please re-authenticate.",
+    });
+  }
+
+  if (!repo_owner || !repo_name || !source_branch || !target_branch) {
+    return res.status(400).json({
+      success: false,
+      message:
+        "Missing required fields: repo_owner, repo_name, source_branch, target_branch",
+    });
+  }
+
+  try {
+    const MergeService = require("../services/mergeService");
+    const preview = await MergeService.compareBranches(
+      accessToken,
+      repo_owner,
+      repo_name,
+      target_branch,
+      source_branch,
+    );
+
+    const hasChanges =
+      (preview?.ahead_by || 0) > 0 ||
+      (preview?.summary?.files_changed || 0) > 0;
+
+    return res.json({
+      success: true,
+      message: hasChanges
+        ? "Merge preview generated successfully"
+        : "No differences found between source and target branches",
+      preview: {
+        repository: `${repo_owner}/${repo_name}`,
+        from: source_branch,
+        to: target_branch,
+        can_auto_merge: preview.status !== "diverged",
+        ...preview,
+      },
+    });
+  } catch (error) {
+    console.error("Error generating merge preview:", error.message);
+    const errorMessage =
+      error?.message ||
+      "Failed to generate merge preview for selected branches";
+    const statusCode = errorMessage.toLowerCase().includes("not found")
+      ? 404
+      : 400;
+
+    return res.status(statusCode).json({
+      success: false,
+      message: errorMessage,
+    });
+  }
+};
+
 // POST create new schedule
 const createSchedule = async (req, res) => {
   const {
@@ -544,6 +615,7 @@ const deleteSchedule = async (req, res) => {
 module.exports = {
   getAllSchedules,
   getScheduleById,
+  previewMergeChanges,
   createSchedule,
   updateSchedule,
   toggleScheduleStatus,

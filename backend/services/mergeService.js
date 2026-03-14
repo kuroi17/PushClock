@@ -350,15 +350,45 @@ class MergeService {
    */
   static async compareBranches(accessToken, owner, repo, base, head) {
     try {
+      const headers = this.buildHeaders(accessToken);
+      const encodedBase = encodeURIComponent(base);
+      const encodedHead = encodeURIComponent(head);
+
       const response = await axios.get(
-        `https://api.github.com/repos/${owner}/${repo}/compare/${base}...${head}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/vnd.github.v3+json",
-            "User-Agent": "PushClock-App",
-          },
-        },
+        `https://api.github.com/repos/${owner}/${repo}/compare/${encodedBase}...${encodedHead}`,
+        { headers },
+      );
+
+      const commits = (response.data.commits || []).map((commit) => ({
+        sha: commit.sha,
+        message: commit.commit?.message || "",
+        short_message: commit.commit?.message?.split("\n")?.[0] || "",
+        author:
+          commit.author?.login ||
+          commit.commit?.author?.name ||
+          commit.commit?.committer?.name ||
+          "unknown",
+        date: commit.commit?.author?.date || null,
+        html_url: commit.html_url,
+      }));
+
+      const files = (response.data.files || []).map((file) => ({
+        filename: file.filename,
+        status: file.status,
+        additions: file.additions,
+        deletions: file.deletions,
+        changes: file.changes,
+        previous_filename: file.previous_filename || null,
+        patch: file.patch || null,
+      }));
+
+      const totalAdditions = files.reduce(
+        (sum, file) => sum + (file.additions || 0),
+        0,
+      );
+      const totalDeletions = files.reduce(
+        (sum, file) => sum + (file.deletions || 0),
+        0,
       );
 
       return {
@@ -366,6 +396,17 @@ class MergeService {
         behind_by: response.data.behind_by,
         status: response.data.status, // 'ahead', 'behind', 'identical', 'diverged'
         total_commits: response.data.total_commits,
+        html_url: response.data.html_url,
+        diff_url: response.data.diff_url,
+        patch_url: response.data.patch_url,
+        commits,
+        files,
+        summary: {
+          files_changed: files.length,
+          total_additions: totalAdditions,
+          total_deletions: totalDeletions,
+          total_changes: totalAdditions + totalDeletions,
+        },
       };
     } catch (error) {
       if (error.response) {

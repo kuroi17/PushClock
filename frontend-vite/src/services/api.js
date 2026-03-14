@@ -81,6 +81,28 @@ const scheduleAPI = {
     return response.json();
   },
 
+  // Preview merge changes before scheduling
+  previewMerge: async (previewData) => {
+    const response = await fetch(`${API_URL}/api/schedule/preview`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(previewData),
+    });
+
+    const responseData = await response.json().catch(() => ({}));
+
+    if (!response.ok || !responseData.success) {
+      throw new Error(
+        responseData.message || "Failed to preview merge changes",
+      );
+    }
+
+    return responseData;
+  },
+
   // Delete schedule
   delete: async (id) => {
     const response = await fetch(`${API_URL}/api/schedule/${id}`, {
@@ -98,9 +120,12 @@ const activityLogAPI = {
   // Get activity logs for the current user (optionally filter by schedule_id or action)
   getAll: async (params = {}) => {
     const query = new URLSearchParams(params).toString();
-    const response = await fetch(`${API_URL}/api/activity-logs${query ? `?${query}` : ""}`, {
-      credentials: "include",
-    });
+    const response = await fetch(
+      `${API_URL}/api/activity-logs${query ? `?${query}` : ""}`,
+      {
+        credentials: "include",
+      },
+    );
     if (!response.ok) {
       throw new Error("Failed to fetch activity logs");
     }
