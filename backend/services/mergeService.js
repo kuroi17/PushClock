@@ -5,17 +5,56 @@
 const axios = require("axios");
 
 class MergeService {
+  static buildHeaders(accessToken) {
+    return {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/vnd.github.v3+json",
+      "User-Agent": "PushClock-App",
+    };
+  }
+
+  static buildCommitIdentity(actor = {}) {
+    const username = actor?.username || "pushclock-bot";
+    const githubId = actor?.githubId ? String(actor.githubId) : null;
+    const email =
+      actor?.email ||
+      (githubId
+        ? `${githubId}+${username}@users.noreply.github.com`
+        : `${username}@users.noreply.github.com`);
+
+    return {
+      name: username,
+      email,
+      date: new Date().toISOString(),
+    };
+  }
+
   /**
    * Revert a merge commit using GitHub API
    * Note: GitHub REST API doesn't have a direct "revert" endpoint.
    * This implementation creates a new commit that reverses the merge changes.
    *
    * @param {string} accessToken - GitHub OAuth access token
-   * @param {object} params - { owner, repo, commitSha, branch }
+   * @param {object} params - { owner, repo, commitSha, branch, actor }
    * @returns {Promise<object>} - Revert result
    */
-  static async revertCommit(accessToken, { owner, repo, commitSha, branch }) {
+  static async revertCommit(
+    accessToken,
+    { owner, repo, commitSha, branch, actor },
+  ) {
     try {
+      if (!owner || !repo || !commitSha || !branch) {
+        return {
+          success: false,
+          sha: null,
+          message:
+            "Missing required rollback fields: owner, repo, commitSha, branch",
+        };
+      }
+
+      const headers = this.buildHeaders(accessToken);
+      const encodedBranch = encodeURIComponent(branch);
+
       console.log(
         `🔄 Attempting to revert commit ${commitSha.substring(0, 7)} in ${owner}/${repo}`,
       );
@@ -23,13 +62,7 @@ class MergeService {
       // Get the merge commit details
       const commitResponse = await axios.get(
         `https://api.github.com/repos/${owner}/${repo}/commits/${commitSha}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/vnd.github.v3+json",
-            "User-Agent": "PushClock-App",
-          },
-        },
+        { headers },
       );
 
       const commit = commitResponse.data;
@@ -43,26 +76,41 @@ class MergeService {
         };
       }
 
-      // To revert a merge commit, we need to:
-      // 1. Get the tree of the first parent (state before merge)
-      // 2. Create a new commit with that tree and current HEAD as parent
-      // 3. Update the branch reference
-
       const firstParentSha = commit.parents[0].sha;
+
+      // Read the current head of the branch and make sure it still points
+      // to the merge commit we are reverting.
+      const branchRefResponse = await axios.get(
+        `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${encodedBranch}`,
+        { headers },
+      );
+
+      const currentHeadSha = branchRefResponse.data?.object?.sha;
+      if (!currentHeadSha) {
+        return {
+          success: false,
+          sha: null,
+          message: `Could not resolve HEAD for branch \"${branch}\".`,
+        };
+      }
+
+      if (currentHeadSha !== commitSha) {
+        return {
+          success: false,
+          sha: null,
+          message:
+            "Rollback requires the merge commit to still be the latest commit on target branch. New commits were detected. Please revert manually in GitHub.",
+        };
+      }
 
       // Get the tree of the first parent (state before merge)
       const parentCommitResponse = await axios.get(
         `https://api.github.com/repos/${owner}/${repo}/git/commits/${firstParentSha}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/vnd.github.v3+json",
-            "User-Agent": "PushClock-App",
-          },
-        },
+        { headers },
       );
 
       const revertTreeSha = parentCommitResponse.data.tree.sha;
+      const identity = this.buildCommitIdentity(actor);
 
       // Create a new commit with the old tree (reverts the merge)
       const newCommitResponse = await axios.post(
@@ -70,33 +118,44 @@ class MergeService {
         {
           message: `Revert merge ${commitSha.substring(0, 7)}\n\nThis reverts commit ${commitSha}`,
           tree: revertTreeSha,
-          parents: [commitSha], // Current HEAD is the parent
+          parents: [currentHeadSha],
+          author: identity,
+          committer: identity,
         },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/vnd.github.v3+json",
-            "User-Agent": "PushClock-App",
-          },
-        },
+        { headers },
       );
 
       const newCommitSha = newCommitResponse.data.sha;
 
       // Update the branch to point to the new revert commit
       await axios.patch(
-        `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`,
+        `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${encodedBranch}`,
         {
           sha: newCommitSha,
           force: false,
         },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/vnd.github.v3+json",
-            "User-Agent": "PushClock-App",
-          },
-        },
+        { headers },
+      );
+
+      // Verify the branch was actually updated so we never return false positives.
+      const verifyBranchRefResponse = await axios.get(
+        `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${encodedBranch}`,
+        { headers },
+      );
+
+      const branchHeadAfterUpdate = verifyBranchRefResponse.data?.object?.sha;
+      if (branchHeadAfterUpdate !== newCommitSha) {
+        return {
+          success: false,
+          sha: null,
+          message:
+            "Rollback verification failed: target branch did not move to the expected revert commit.",
+        };
+      }
+
+      const revertCommitDetails = await axios.get(
+        `https://api.github.com/repos/${owner}/${repo}/commits/${newCommitSha}`,
+        { headers },
       );
 
       console.log(`✅ Revert successful: ${newCommitSha.substring(0, 7)}`);
@@ -104,6 +163,8 @@ class MergeService {
       return {
         success: true,
         sha: newCommitSha,
+        html_url: revertCommitDetails.data?.html_url || null,
+        branch,
         message: `Revert merge ${commitSha.substring(0, 7)}`,
       };
     } catch (error) {
@@ -117,6 +178,9 @@ class MergeService {
         else if (status === 404)
           message =
             "Commit or branch not found. The merge may have been already reverted or deleted.";
+        else if (status === 403)
+          message =
+            "Permission denied by GitHub. Verify token scopes and branch protection rules.";
         else if (status === 422)
           message = `Revert validation failed: ${data?.message || "Unknown error"}`;
         else
@@ -195,6 +259,22 @@ class MergeService {
         },
       );
 
+      if (response.status === 204) {
+        console.log(
+          `⚠️ Branches already merged or no changes: ${source_branch} → ${target_branch}`,
+        );
+        return {
+          success: true,
+          merged: false,
+          sha: null,
+          message: "Already merged or no changes to merge",
+        };
+      }
+
+      if (!response.data?.sha) {
+        throw new Error("GitHub merge response did not contain a commit SHA");
+      }
+
       console.log(`✅ Merge successful: ${response.data.sha.substring(0, 7)}`);
 
       return {
@@ -207,18 +287,6 @@ class MergeService {
       // Handle specific GitHub API errors
       if (error.response) {
         const { status, data } = error.response;
-
-        // 204 = Already merged or no changes
-        if (status === 204) {
-          console.log(
-            `⚠️ Branches already merged or no changes: ${source_branch} → ${target_branch}`,
-          );
-          return {
-            success: true,
-            merged: false,
-            message: "Already merged or no changes to merge",
-          };
-        }
 
         // 409 = Merge conflict
         if (status === 409) {

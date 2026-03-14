@@ -45,12 +45,24 @@ const rollbackSchedule = async (req, res) => {
     // Call GitHub API to revert the merge commit
     const MergeService = require("../services/mergeService");
     const accessToken = req.user.access_token;
+
+    if (!accessToken) {
+      return res.status(401).json({
+        success: false,
+        message: "GitHub access token not found. Please re-authenticate.",
+      });
+    }
+
     const { repo_owner, repo_name, target_branch, merge_commit_sha } = schedule;
     const revertResult = await MergeService.revertCommit(accessToken, {
       owner: repo_owner,
       repo: repo_name,
       commitSha: merge_commit_sha,
       branch: target_branch,
+      actor: {
+        username: req.user.username,
+        githubId: req.user.github_id,
+      },
     });
 
     if (!revertResult.success) {
@@ -64,10 +76,20 @@ const rollbackSchedule = async (req, res) => {
         user_id: userId,
         action: "rollback-failed",
         schedule_id: id,
-        details: { message: revertResult.message },
+        details: {
+          message: revertResult.message,
+          merge_commit_sha,
+          target_branch,
+        },
       });
 
-      return res.status(500).json({
+      const rollbackFailureStatus = revertResult.message
+        .toLowerCase()
+        .includes("manual")
+        ? 409
+        : 500;
+
+      return res.status(rollbackFailureStatus).json({
         success: false,
         message: `GitHub revert failed: ${revertResult.message}`,
       });
@@ -75,7 +97,7 @@ const rollbackSchedule = async (req, res) => {
 
     // Update schedule with rollback information and audit timestamp
     const rollbackTimestamp = new Date().toISOString();
-    await supabase
+    const { error: updateError } = await supabase
       .from("schedules")
       .update({
         status: "rollback-completed",
@@ -84,6 +106,10 @@ const rollbackSchedule = async (req, res) => {
         updated_at: rollbackTimestamp,
       })
       .eq("id", id);
+
+    if (updateError) {
+      throw new Error(`Failed to save rollback status: ${updateError.message}`);
+    }
 
     // log the rollback attempt success
     const shortSha = revertResult.sha?.substring(0, 7) || "N/A";
@@ -96,6 +122,9 @@ const rollbackSchedule = async (req, res) => {
       schedule_id: id,
       details: {
         revert_commit_sha: revertResult.sha,
+        revert_commit_url: revertResult.html_url,
+        merge_commit_sha,
+        target_branch,
         rollback_at: rollbackTimestamp,
       },
     });
@@ -104,6 +133,7 @@ const rollbackSchedule = async (req, res) => {
       success: true,
       message: "Rollback (revert) completed successfully.",
       revert_commit_sha: revertResult.sha,
+      revert_commit_url: revertResult.html_url,
       rollback_at: rollbackTimestamp,
     });
   } catch (err) {
