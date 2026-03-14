@@ -68,19 +68,20 @@ const EditScheduleModal = ({ schedule, isOpen, onClose, onUpdate }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-bgSecondary rounded-xl shadow-lg max-w-md w-full p-6 border border-border">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-sm">
+      <div className="pc-surface w-full max-w-lg p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl md:text-2xl font-bold text-text">
             Edit Schedule
           </h2>
           <button
             onClick={onClose}
-            className="text-textMuted hover:text-primary transition-colors"
+            type="button"
+            className="pc-icon-btn"
             aria-label="Close modal"
           >
             <svg
-              className="w-6 h-6"
+              className="h-5 w-5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -96,30 +97,23 @@ const EditScheduleModal = ({ schedule, isOpen, onClose, onUpdate }) => {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-error/10 border border-error text-error rounded-lg text-sm">
+          <div className="mb-4 rounded-lg border border-error/30 bg-error/10 p-3 text-sm text-error">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Repository Name (Read-only) */}
           <div>
-            <label className="block text-sm font-medium text-text mb-2">
-              Repository
-            </label>
-            <div className="px-4 py-2 bg-bg border border-border rounded-lg text-textMuted">
+            <label className="pc-label">Repository</label>
+            <div className="rounded-lg border border-border bg-bg px-4 py-2 text-sm text-textMuted">
               {schedule?.repo_owner && schedule?.repo_name
                 ? `${schedule.repo_owner}/${schedule.repo_name}`
                 : schedule?.repo_path || "Unknown"}
             </div>
           </div>
 
-          {/* Source Branch */}
           <div>
-            <label
-              htmlFor="source_branch"
-              className="block text-sm font-medium text-text mb-2"
-            >
+            <label htmlFor="source_branch" className="pc-label">
               Source Branch (FROM) <span className="text-error">*</span>
             </label>
             <input
@@ -129,20 +123,14 @@ const EditScheduleModal = ({ schedule, isOpen, onClose, onUpdate }) => {
               value={formData.source_branch}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+              className="pc-input"
               placeholder="e.g., pushclock-temp"
             />
-            <p className="text-xs text-textMuted mt-1">
-              The branch containing your commits
-            </p>
+            <p className="pc-help">Branch containing your commits.</p>
           </div>
 
-          {/* Target Branch */}
           <div>
-            <label
-              htmlFor="target_branch"
-              className="block text-sm font-medium text-text mb-2"
-            >
+            <label htmlFor="target_branch" className="pc-label">
               Target Branch (TO) <span className="text-error">*</span>
             </label>
             <input
@@ -152,21 +140,15 @@ const EditScheduleModal = ({ schedule, isOpen, onClose, onUpdate }) => {
               value={formData.target_branch}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+              className="pc-input"
               placeholder="e.g., main"
             />
-            <p className="text-xs text-textMuted mt-1">
-              The branch to merge into
-            </p>
+            <p className="pc-help">Branch to receive the merge.</p>
           </div>
 
-          {/* Push Time */}
           <div>
-            <label
-              htmlFor="push_time"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Push Time <span className="text-red-500">*</span>
+            <label htmlFor="push_time" className="pc-label">
+              Push Time <span className="text-error">*</span>
             </label>
             <input
               type="datetime-local"
@@ -175,16 +157,12 @@ const EditScheduleModal = ({ schedule, isOpen, onClose, onUpdate }) => {
               value={formData.push_time}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              className="pc-input"
             />
           </div>
 
-          {/* Commit Message */}
           <div>
-            <label
-              htmlFor="commit_message"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
+            <label htmlFor="commit_message" className="pc-label">
               Commit Message
             </label>
             <input
@@ -193,24 +171,23 @@ const EditScheduleModal = ({ schedule, isOpen, onClose, onUpdate }) => {
               name="commit_message"
               value={formData.commit_message}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              className="pc-input"
               placeholder="Automated push by PushClock"
             />
           </div>
 
-          {/* Action Buttons */}
           <div className="flex gap-3 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="pc-btn pc-btn-secondary flex-1"
               disabled={loading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="pc-btn pc-btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={loading}
             >
               {loading ? (
@@ -242,10 +219,9 @@ const EditScheduleModal = ({ schedule, isOpen, onClose, onUpdate }) => {
             </button>
           </div>
 
-          {/* Info Note */}
-          <p className="text-xs text-gray-500 mt-4">
+          <p className="mt-2 text-xs text-textMuted">
             <svg
-              className="w-4 h-4 inline mr-1"
+              className="mr-1 inline h-4 w-4"
               fill="currentColor"
               viewBox="0 0 20 20"
             >

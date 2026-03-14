@@ -7,12 +7,12 @@ const Header = ({ title, subtitle }) => {
   const isAddSchedule = location.pathname === "/add";
 
   return (
-    <header className="mb-8">
+    <header className="pc-page-header mb-6">
       {!isDashboard && !isAddSchedule && (
-        <div className="flex items-center mb-4">
+        <div className="mb-4 flex items-center">
           <Link
             to="/"
-            className="text-primary hover:text-primary-dark flex items-center transition-colors"
+            className="inline-flex items-center text-sm font-semibold text-primary hover:text-primary-dark transition-colors"
           >
             <svg
               className="w-5 h-5 mr-2"
@@ -27,14 +27,12 @@ const Header = ({ title, subtitle }) => {
                 d="M10 19l-7-7m0 0l7-7m-7 7h18"
               />
             </svg>
-            Back to Dashboard
+            Back to overview
           </Link>
         </div>
       )}
-      <h1 className="text-3xl md:text-4xl font-bold text-text mb-2 leading-tight">
-        {title}
-      </h1>
-      <p className="text-textMuted text-base md:text-lg">{subtitle}</p>
+      <h1 className="pc-page-title">{title}</h1>
+      <p className="pc-page-subtitle">{subtitle}</p>
     </header>
   );
 };

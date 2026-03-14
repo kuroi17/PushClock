@@ -1,12 +1,14 @@
 import React from "react";
 
 const Notification = ({ type = "success", message, onClose }) => {
-  const bgColor = {
-    success: "bg-success/10 border-success text-success",
-    error: "bg-error/10 border-error text-error",
-    warning: "bg-warning/10 border-warning text-warning",
-    info: "bg-info/10 border-info text-info",
+  const variantStyles = {
+    success: "border-emerald-300 bg-emerald-50 text-emerald-700",
+    error: "border-red-300 bg-red-50 text-red-700",
+    warning: "border-amber-300 bg-amber-50 text-amber-700",
+    info: "border-sky-300 bg-sky-50 text-sky-700",
   };
+
+  const tone = variantStyles[type] || variantStyles.info;
 
   const icon = {
     success: (
@@ -51,20 +53,19 @@ const Notification = ({ type = "success", message, onClose }) => {
 
   return (
     <div
-      className={`border-l-4 p-4 mb-4 rounded-lg shadow-md ${bgColor[type]} flex items-center justify-between animate-fade-in`}
+      className={`mb-4 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-sm animate-enter ${tone}`}
       role="alert"
       aria-live="polite"
     >
-      <div className="flex items-center space-x-3">
-        {icon[type]}
-        <p className="font-medium">{message}</p>
+      <div className="flex items-center gap-3">
+        <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/65">
+          {icon[type]}
+        </span>
+        <p className="text-sm font-semibold">{message}</p>
       </div>
       {onClose && (
-        <button
-          onClick={onClose}
-          className="text-gray-600 hover:text-gray-800 transition-colors"
-        >
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+        <button type="button" onClick={onClose} className="pc-icon-btn h-8 w-8">
+          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
             <path
               fillRule="evenodd"
               d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"

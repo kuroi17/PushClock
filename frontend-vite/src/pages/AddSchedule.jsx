@@ -1,7 +1,6 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import Header from "../components/Header";
 import AddRepoForm from "../components/AddRepoForm";
 import Notification from "../components/Notification";
 import { scheduleAPI } from "../services/api";
@@ -55,97 +54,111 @@ const AddSchedule = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <Navbar />
-
-      <div className="container mx-auto px-6 py-8">
-        {/* Notification */}
-        {notification.show && (
-          <Notification
-            type={notification.type}
-            message={notification.message}
-            onClose={() => setNotification({ ...notification, show: false })}
-          />
-        )}
-
-        {/* Page Header */}
-        <Header
-          title="Schedule New Push"
-          subtitle="Configure your repository and push timing"
+    <Navbar
+      title="Create Merge Schedule"
+      subtitle="Configure branch routing, preview diffs, and queue execution safely."
+    >
+      {notification.show && (
+        <Notification
+          type={notification.type}
+          message={notification.message}
+          onClose={() => setNotification({ ...notification, show: false })}
         />
+      )}
 
-        {/* Info Card */}
-        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-8 rounded-lg">
-          <div className="flex items-start">
-            <svg
-              className="w-6 h-6 text-blue-600 mr-3 flex-shrink-0 mt-0.5"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <div>
-              <h3 className="text-blue-900 font-semibold mb-1">How it works</h3>
-              <ul className="text-blue-800 text-sm space-y-1">
-                <li>• Select a repository from your GitHub account</li>
-                <li>• Choose the branch you want to push</li>
-                <li>• Set the date and time for the scheduled push</li>
-                <li>
-                  • GitHub Actions will automatically push at the specified time
-                </li>
-              </ul>
+      <section className="grid grid-cols-1 xl:grid-cols-[1.8fr_1fr] gap-5 items-start">
+        <div className="space-y-5 min-w-0">
+          <div className="pc-surface p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-text">
+                  Scheduling Workflow
+                </h2>
+                <p className="text-sm text-textMuted">
+                  Follow each step to reduce failed merges and accidental branch
+                  drift.
+                </p>
+              </div>
+              {isSubmitting && (
+                <span className="pc-badge border border-info/40 bg-info/10 text-info">
+                  Saving...
+                </span>
+              )}
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {[
+                {
+                  step: "01",
+                  title: "Select Repository",
+                  text: "Pick the source repo and branch pair to merge.",
+                },
+                {
+                  step: "02",
+                  title: "Preview Changes",
+                  text: "Review commit and file diffs before scheduling.",
+                },
+                {
+                  step: "03",
+                  title: "Set Execution",
+                  text: "Choose date/time and confirm merge intent.",
+                },
+              ].map((item) => (
+                <article
+                  key={item.step}
+                  className="rounded-xl border border-border bg-bg px-4 py-3"
+                >
+                  <p className="text-xs font-bold uppercase tracking-[0.1em] text-primary">
+                    Step {item.step}
+                  </p>
+                  <h3 className="mt-1 text-sm font-semibold text-text">
+                    {item.title}
+                  </h3>
+                  <p className="mt-1 text-xs text-textMuted">{item.text}</p>
+                </article>
+              ))}
             </div>
           </div>
+
+          <AddRepoForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
         </div>
 
-        {/* Form */}
-        <AddRepoForm onSubmit={handleSubmit} />
+        <aside className="space-y-5">
+          <div className="pc-surface p-5">
+            <h3 className="text-lg font-bold text-text">Best Practices</h3>
+            <ul className="mt-3 space-y-2 text-sm text-textMuted">
+              <li className="rounded-lg border border-border bg-bg px-3 py-2">
+                Always preview merge content before scheduling.
+              </li>
+              <li className="rounded-lg border border-border bg-bg px-3 py-2">
+                Keep source branches updated with remote before submit.
+              </li>
+              <li className="rounded-lg border border-border bg-bg px-3 py-2">
+                Set schedules during off-peak deployment windows.
+              </li>
+              <li className="rounded-lg border border-border bg-bg px-3 py-2">
+                Use rollback only when merge commit is still at branch head.
+              </li>
+            </ul>
+          </div>
 
-        {/* Tips Section */}
-        <div className="mt-8 bg-white rounded-xl shadow-lg p-6">
-          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
-            <svg
-              className="w-6 h-6 mr-2 text-yellow-500"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-            </svg>
-            Pro Tips
-          </h3>
-          <ul className="space-y-2 text-gray-700">
-            <li className="flex items-start">
-              <span className="text-blue-600 mr-2">•</span>
-              <span>
-                Make sure your repository has commits ready to push before
-                scheduling
-              </span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-blue-600 mr-2">•</span>
-              <span>The branch must exist in your local repository</span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-blue-600 mr-2">•</span>
-              <span>
-                Schedule multiple pushes to maintain consistent GitHub activity
-              </span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-blue-600 mr-2">•</span>
-              <span>
-                Your computer must be running at the scheduled time for the push
-                to execute
-              </span>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
+          <div className="pc-surface p-5 bg-gradient-to-br from-primary-dark to-primary text-white">
+            <h3 className="text-lg font-bold text-white">
+              Execution Checklist
+            </h3>
+            <p className="mt-1 text-sm text-white/80">
+              Confirm these before submitting the schedule.
+            </p>
+            <ul className="mt-4 space-y-2 text-sm text-white/90">
+              <li>Source branch exists and has ready commits.</li>
+              <li>Target branch aligns with release policy.</li>
+              <li>Preview was acknowledged and reviewed.</li>
+              <li>Scheduled time matches team timezone.</li>
+            </ul>
+          </div>
+        </aside>
+      </section>
+    </Navbar>
   );
 };
 

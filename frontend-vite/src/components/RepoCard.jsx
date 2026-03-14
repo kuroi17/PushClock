@@ -2,6 +2,23 @@ import React, { useState } from "react";
 import { scheduleAPI } from "../services/api";
 import EditScheduleModal from "./EditScheduleModal";
 
+const statusStyles = {
+  pending: "border-amber-200 bg-amber-50 text-amber-700",
+  completed: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  "rollback-completed": "border-cyan-200 bg-cyan-50 text-cyan-700",
+  failed: "border-red-200 bg-red-50 text-red-700",
+  error: "border-red-200 bg-red-50 text-red-700",
+  scheduled: "border-sky-200 bg-sky-50 text-sky-700",
+  active: "border-violet-200 bg-violet-50 text-violet-700",
+  paused: "border-slate-200 bg-slate-50 text-slate-700",
+};
+
+const detailStyles = {
+  success: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  error: "border-red-200 bg-red-50 text-red-800",
+  rollback: "border-cyan-200 bg-cyan-50 text-cyan-800",
+};
+
 const RepoCard = ({ schedule, onDelete, onUpdate }) => {
   const [toggling, setToggling] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -9,56 +26,6 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
   const [rollbacking, setRollbacking] = useState(false);
   const [rollbackResult, setRollbackResult] = useState(null);
 
-  const getStatusColor = (status) => {
-    const colors = {
-      pending: "bg-yellow-100 text-yellow-800 border-yellow-300",
-      completed: "bg-green-100 text-green-800 border-green-300",
-      "rollback-completed": "bg-cyan-100 text-cyan-800 border-cyan-300",
-      failed: "bg-red-100 text-red-800 border-red-300",
-      error: "bg-red-100 text-red-800 border-red-300",
-      scheduled: "bg-blue-100 text-blue-800 border-blue-300",
-      active: "bg-purple-100 text-purple-800 border-purple-300",
-      paused: "bg-gray-100 text-gray-800 border-gray-300",
-    };
-    return colors[status] || colors.scheduled;
-  };
-  const handleRollback = async () => {
-    if (
-      !window.confirm(
-        "Are you sure you want to rollback (undo) this merge? This will attempt to revert the merge commit on GitHub.",
-      )
-    ) {
-      return;
-    }
-    setRollbacking(true);
-    setRollbackResult(null);
-    try {
-      const result = await scheduleAPI.rollback(schedule.id);
-      setRollbackResult({
-        success: true,
-        message: result.message,
-        revertCommitSha: result.revert_commit_sha || null,
-        revertCommitUrl: result.revert_commit_url || null,
-      });
-      if (onUpdate) onUpdate();
-    } catch (error) {
-      setRollbackResult({ success: false, message: error.message });
-    } finally {
-      setRollbacking(false);
-    }
-  };
-
-  const formatDateTime = (dateTime) => {
-    return new Date(dateTime).toLocaleString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  // Display GitHub repo name or fall back to legacy repo_path
   const displayName =
     schedule?.repo_owner && schedule?.repo_name
       ? `${schedule.repo_owner}/${schedule.repo_name}`
@@ -69,146 +36,161 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
       ? `${schedule.github_repo_url}/commit/${schedule.revert_commit_sha}`
       : null;
 
-  const handleDelete = () => {
-    if (confirm("Are you sure you want to delete this schedule?")) {
+  const formatDateTime = (dateTime) =>
+    new Date(dateTime).toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+  const handleRollback = async (event) => {
+    event.stopPropagation();
+
+    if (
+      !window.confirm(
+        "Are you sure you want to rollback (undo) this merge? This will attempt to revert the merge commit on GitHub.",
+      )
+    ) {
+      return;
+    }
+
+    setRollbacking(true);
+    setRollbackResult(null);
+
+    try {
+      const result = await scheduleAPI.rollback(schedule.id);
+      setRollbackResult({
+        success: true,
+        message: result.message,
+        revertCommitSha: result.revert_commit_sha || null,
+        revertCommitUrl: result.revert_commit_url || null,
+      });
+
+      if (onUpdate) onUpdate();
+    } catch (error) {
+      setRollbackResult({
+        success: false,
+        message: error.message,
+      });
+    } finally {
+      setRollbacking(false);
+    }
+  };
+
+  const handleDelete = (event) => {
+    event.stopPropagation();
+    if (window.confirm("Are you sure you want to delete this schedule?")) {
       if (onDelete) onDelete(schedule.id);
     }
   };
 
-  const handleToggleStatus = async () => {
+  const handleToggleStatus = async (event) => {
+    event.stopPropagation();
+
     try {
       setToggling(true);
       const result = await scheduleAPI.toggleStatus(schedule.id);
-
-      if (result.success) {
-        if (onUpdate) onUpdate();
-      }
+      if (result.success && onUpdate) onUpdate();
     } catch (error) {
-      console.error("Error toggling schedule status:", error);
       alert(`Failed to toggle status: ${error.message}`);
     } finally {
       setToggling(false);
     }
   };
 
-  const handleEdit = () => {
+  const handleEdit = (event) => {
+    event.stopPropagation();
     setIsEditModalOpen(true);
   };
 
-  const handleCardClick = (e) => {
-    // Don't toggle if clicking on buttons or links
-    if (
-      e.target.closest("button") ||
-      e.target.closest("a") ||
-      e.target.closest("svg")
-    ) {
-      return;
-    }
-    setIsExpanded(!isExpanded);
-  };
+  const statusClass =
+    statusStyles[schedule?.status] || "border-sky-200 bg-sky-50 text-sky-700";
 
   return (
-    <div
-      className="bg-bgSecondary rounded-xl shadow-md hover:shadow-lg transition-all duration-300 p-6 border border-border cursor-pointer focus-within:ring-2 focus-within:ring-primary"
+    <article
+      className="pc-surface cursor-pointer p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
       tabIndex={0}
       role="group"
       aria-label={`Schedule card for ${displayName}`}
-      onClick={handleCardClick}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") handleCardClick(e);
+      onClick={() => setIsExpanded((prev) => !prev)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          setIsExpanded((prev) => !prev);
+        }
       }}
     >
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <h3 className="text-lg font-bold text-text mb-2 flex items-center">
-            <svg
-              className="w-5 h-5 mr-2 text-primary"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"
-                clipRule="evenodd"
-              />
-            </svg>
-            {schedule?.github_repo_url ? (
-              <a
-                href={schedule.github_repo_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-primary transition-colors underline"
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                {displayName}
-              </a>
-            ) : (
-              displayName
-            )}
-          </h3>
-          <p className="text-sm text-textMuted flex items-center">
-            <svg
-              className="w-4 h-4 mr-1"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 7h12M8 12h12M8 17h12M3 7h.01M3 12h.01M3 17h.01"
-              />
-            </svg>
-            Merge:{" "}
-            <span className="font-semibold ml-1 text-primary">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M16 7H8m8 5H8m8 5H8M4 7h.01M4 12h.01M4 17h.01"
+                />
+              </svg>
+            </span>
+
+            <h3 className="truncate text-sm font-bold text-text">
+              {schedule?.github_repo_url ? (
+                <a
+                  href={schedule.github_repo_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-primary"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  {displayName}
+                </a>
+              ) : (
+                displayName
+              )}
+            </h3>
+          </div>
+
+          <p className="mt-2 text-xs text-textMuted">
+            <span className="font-semibold text-primary">
               {schedule?.source_branch || "pushclock-temp"}
             </span>
-            {" → "}
+            <span className="mx-1">to</span>
             <span className="font-semibold text-success">
               {schedule?.target_branch || "main"}
             </span>
           </p>
         </div>
-        <span
-          className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(schedule?.status || "scheduled")}`}
-          aria-label={`Status: ${schedule?.status || "Scheduled"}`}
-        >
-          {schedule?.status || "Scheduled"}
+
+        <span className={`pc-badge border ${statusClass}`}>
+          {schedule?.status || "scheduled"}
         </span>
       </div>
 
-      <div className="border-t border-border pt-4 mt-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center text-sm text-textMuted">
-            <svg
-              className="w-5 h-5 mr-2 text-info"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <span className="font-medium">
-              {formatDateTime(schedule?.pushTime || new Date())}
-            </span>
-          </div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-bg px-3 py-2.5">
+        <p className="text-xs font-medium text-textMuted">
+          {formatDateTime(schedule?.pushTime || new Date())}
+        </p>
 
-          {/* Rollback Button (only for completed merges with merge_commit_sha) */}
+        <div className="flex items-center gap-1.5">
           {schedule?.status === "completed" && schedule?.merge_commit_sha && (
             <button
+              type="button"
               onClick={handleRollback}
               disabled={rollbacking}
-              className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors duration-200 ml-2 disabled:opacity-50"
-              title="Rollback (Undo) Merge"
+              className="pc-icon-btn text-warning"
+              title="Rollback merge"
             >
               {rollbacking ? (
                 <svg
-                  className="w-5 h-5 animate-spin"
+                  className="h-4 w-4 animate-spin"
                   fill="none"
                   viewBox="0 0 24 24"
                 >
@@ -223,12 +205,12 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
                   <path
                     className="opacity-75"
                     fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
                   ></path>
                 </svg>
               ) : (
                 <svg
-                  className="w-5 h-5"
+                  className="h-4 w-4"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -237,151 +219,79 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
+                    d="M9 14l-4-4m0 0l4-4m-4 4h11a4 4 0 010 8h-1"
                   />
                 </svg>
               )}
             </button>
           )}
-          <div className="flex space-x-2">
-            {/* Toggle Status Button (Play/Pause) */}
-            <button
-              onClick={handleToggleStatus}
-              disabled={toggling}
-              className={`p-2 rounded-lg transition-colors duration-200 disabled:opacity-50 ${
-                schedule?.status === "paused"
-                  ? "text-green-600 hover:bg-green-50"
-                  : "text-yellow-600 hover:bg-yellow-50"
-              }`}
-              title={
-                schedule?.status === "paused"
-                  ? "Resume Schedule"
-                  : "Pause Schedule"
-              }
-            >
-              {toggling ? (
-                <svg
-                  className="w-5 h-5 animate-spin"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-              ) : schedule?.status === "paused" ? (
-                <svg
-                  className="w-5 h-5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  className="w-5 h-5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              )}
-            </button>
 
-            {/* Edit Button */}
-            <button
-              onClick={handleEdit}
-              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
-              title="Edit Schedule"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                />
-              </svg>
-            </button>
-
-            {/* Delete Button */}
-            <button
-              onClick={handleDelete}
-              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
-              title="Delete Schedule"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Rollback Result Message */}
-        {rollbackResult && (
-          <div
-            className={`mt-3 p-3 rounded text-xs ${rollbackResult.success ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}
+          <button
+            type="button"
+            onClick={handleToggleStatus}
+            disabled={toggling}
+            className="pc-icon-btn"
+            title={
+              schedule?.status === "paused"
+                ? "Resume schedule"
+                : "Pause schedule"
+            }
           >
-            <p>{rollbackResult.message}</p>
-            {rollbackResult.success && rollbackResult.revertCommitSha && (
-              <p className="mt-1 text-[11px] opacity-80">
-                Revert commit: {rollbackResult.revertCommitSha.substring(0, 7)}
-              </p>
-            )}
-            {rollbackResult.success && rollbackResult.revertCommitUrl && (
-              <a
-                href={rollbackResult.revertCommitUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-block underline font-semibold"
-                onClick={(e) => e.stopPropagation()}
+            {toggling ? (
+              <svg
+                className="h-4 w-4 animate-spin"
+                fill="none"
+                viewBox="0 0 24 24"
               >
-                Open Revert Commit on GitHub
-              </a>
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                ></path>
+              </svg>
+            ) : schedule?.status === "paused" ? (
+              <svg
+                className="h-4 w-4 text-success"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1.5-4.5l5-3.5-5-3.5v7z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            ) : (
+              <svg
+                className="h-4 w-4 text-warning"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M5 4a1 1 0 00-1 1v10a1 1 0 102 0V5a1 1 0 00-1-1zm10 0a1 1 0 00-1 1v10a1 1 0 102 0V5a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
             )}
-          </div>
-        )}
-      </div>
+          </button>
 
-      {/* Expandable Details Section */}
-      {isExpanded && (
-        <div className="border-t border-gray-200 mt-4 pt-4 animate-fadeIn">
-          <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+          <button
+            type="button"
+            onClick={handleEdit}
+            className="pc-icon-btn text-info"
+            title="Edit schedule"
+          >
             <svg
-              className="w-4 h-4 mr-2"
+              className="h-4 w-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -390,197 +300,155 @@ const RepoCard = ({ schedule, onDelete, onUpdate }) => {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-2.1-7.9l2 2L11 15H9v-2l7.9-7.9z"
               />
             </svg>
-            Schedule Details
-          </h4>
+          </button>
 
-          <div className="space-y-2 text-sm">
-            {/* Repository URL */}
-            {schedule?.github_repo_url && (
-              <div className="flex items-start">
-                <span className="font-medium text-gray-600 w-32">
-                  Repository:
-                </span>
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="pc-icon-btn text-error"
+            title="Delete schedule"
+          >
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 7l-.9 12.1A2 2 0 0116.1 21H7.9a2 2 0 01-2-1.9L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {rollbackResult && (
+        <div
+          className={`mt-3 rounded-lg border px-3 py-2 text-xs ${rollbackResult.success ? detailStyles.success : detailStyles.error}`}
+        >
+          <p>{rollbackResult.message}</p>
+          {rollbackResult.success && rollbackResult.revertCommitSha && (
+            <p className="mt-1 font-semibold">
+              Revert commit: {rollbackResult.revertCommitSha.substring(0, 7)}
+            </p>
+          )}
+          {rollbackResult.success && rollbackResult.revertCommitUrl && (
+            <a
+              href={rollbackResult.revertCommitUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-block font-semibold underline"
+              onClick={(event) => event.stopPropagation()}
+            >
+              Open Revert Commit on GitHub
+            </a>
+          )}
+        </div>
+      )}
+
+      {isExpanded && (
+        <div className="mt-4 space-y-3 rounded-xl border border-border bg-bg p-3 animate-enter">
+          <div className="grid gap-2 text-xs text-text sm:grid-cols-2">
+            <p>
+              <span className="font-semibold text-textMuted">Repository: </span>
+              {schedule?.github_repo_url ? (
                 <a
                   href={schedule.github_repo_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline flex-1"
-                  onClick={(e) => e.stopPropagation()}
+                  className="font-medium text-info underline"
+                  onClick={(event) => event.stopPropagation()}
                 >
                   {schedule.github_repo_url}
                 </a>
-              </div>
-            )}
-
-            {/* Source Branch */}
-            <div className="flex items-start">
-              <span className="font-medium text-gray-600 w-32">
-                Source Branch:
+              ) : (
+                "N/A"
+              )}
+            </p>
+            <p>
+              <span className="font-semibold text-textMuted">
+                Source branch:{" "}
               </span>
-              <span className="text-gray-800 flex-1">
-                {schedule?.source_branch || "N/A"}
+              {schedule?.source_branch || "N/A"}
+            </p>
+            <p>
+              <span className="font-semibold text-textMuted">
+                Target branch:{" "}
               </span>
-            </div>
-
-            {/* Target Branch */}
-            <div className="flex items-start">
-              <span className="font-medium text-gray-600 w-32">
-                Target Branch:
+              {schedule?.target_branch || "N/A"}
+            </p>
+            <p>
+              <span className="font-semibold text-textMuted">
+                Scheduled at:{" "}
               </span>
-              <span className="text-gray-800 flex-1">
-                {schedule?.target_branch || "N/A"}
-              </span>
-            </div>
-
-            {/* Status */}
-            <div className="flex items-start">
-              <span className="font-medium text-gray-600 w-32">Status:</span>
-              <span className="flex-1">
-                <span
-                  className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(schedule?.status)}`}
-                >
-                  {schedule?.status || "scheduled"}
-                </span>
-              </span>
-            </div>
-
-            {/* Scheduled Time */}
-            <div className="flex items-start">
-              <span className="font-medium text-gray-600 w-32">Scheduled:</span>
-              <span className="text-gray-800 flex-1">
-                {formatDateTime(schedule?.pushTime || new Date())}
-              </span>
-            </div>
-
-            {/* Error Message (if exists) */}
-            {schedule?.error_message && (
-              <div className="flex items-start mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <svg
-                  className="w-5 h-5 text-red-600 mr-2 flex-shrink-0 mt-0.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <div className="flex-1">
-                  <span className="font-semibold text-red-800 block mb-1">
-                    Error Details:
-                  </span>
-                  <span className="text-red-700 text-xs">
-                    {schedule.error_message}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Success Message (if completed) */}
-            {schedule?.status === "completed" && (
-              <div className="flex items-start mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <svg
-                  className="w-5 h-5 text-green-600 mr-2 flex-shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <div className="flex-1">
-                  <span className="font-semibold text-green-800 block mb-1">
-                    Merge Successful!
-                  </span>
-                  <span className="text-green-700 text-xs">
-                    Branches were merged successfully. Check your repository on
-                    GitHub.
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Rollback Success Message */}
-            {schedule?.status === "rollback-completed" && (
-              <div className="flex items-start mt-3 p-3 bg-cyan-50 border border-cyan-200 rounded-lg">
-                <svg
-                  className="w-5 h-5 text-cyan-700 mr-2 flex-shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 10h11a4 4 0 110 8h-1m0 0l3-3m-3 3l3 3"
-                  />
-                </svg>
-                <div className="flex-1">
-                  <span className="font-semibold text-cyan-900 block mb-1">
-                    Rollback Completed
-                  </span>
-                  <span className="text-cyan-800 text-xs block">
-                    Merge changes were reverted on GitHub.
-                  </span>
-                  {schedule?.revert_commit_sha && (
-                    <span className="text-cyan-900 text-xs font-medium block mt-1">
-                      SHA: {schedule.revert_commit_sha.substring(0, 7)}
-                    </span>
-                  )}
-                  {persistedRollbackCommitUrl && (
-                    <a
-                      href={persistedRollbackCommitUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs font-semibold underline mt-2 inline-block text-cyan-900"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      Open Revert Commit on GitHub
-                    </a>
-                  )}
-                </div>
-              </div>
-            )}
+              {formatDateTime(schedule?.pushTime || new Date())}
+            </p>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500 flex items-center">
-            <svg
-              className="w-4 h-4 mr-1"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          {schedule?.error_message && (
+            <div
+              className={`rounded-lg border px-3 py-2 text-xs ${detailStyles.error}`}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            Click anywhere on the card to collapse this view
-          </div>
+              <p className="font-semibold">Error Details</p>
+              <p className="mt-1">{schedule.error_message}</p>
+            </div>
+          )}
+
+          {schedule?.status === "completed" && (
+            <div
+              className={`rounded-lg border px-3 py-2 text-xs ${detailStyles.success}`}
+            >
+              <p className="font-semibold">Merge Successful</p>
+              <p className="mt-1">
+                Branches were merged successfully in GitHub.
+              </p>
+            </div>
+          )}
+
+          {schedule?.status === "rollback-completed" && (
+            <div
+              className={`rounded-lg border px-3 py-2 text-xs ${detailStyles.rollback}`}
+            >
+              <p className="font-semibold">Rollback Completed</p>
+              <p className="mt-1">Merge changes were reverted successfully.</p>
+              {schedule?.revert_commit_sha && (
+                <p className="mt-1 font-semibold">
+                  SHA: {schedule.revert_commit_sha.substring(0, 7)}
+                </p>
+              )}
+              {persistedRollbackCommitUrl && (
+                <a
+                  href={persistedRollbackCommitUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-block font-semibold underline"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  Open Revert Commit on GitHub
+                </a>
+              )}
+            </div>
+          )}
+
+          <p className="text-[11px] font-medium text-textMuted">
+            Tip: click the card again to collapse details.
+          </p>
         </div>
       )}
 
-      {/* Edit Schedule Modal */}
       <EditScheduleModal
         schedule={schedule}
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onUpdate={onUpdate}
       />
-    </div>
+    </article>
   );
 };
 

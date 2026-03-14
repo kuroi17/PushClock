@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import Header from "../components/Header";
 import RepoCard from "../components/RepoCard";
 import Notification from "../components/Notification";
 import { scheduleAPI } from "../services/api";
@@ -70,175 +69,247 @@ const Dashboard = () => {
     }
   };
 
-  const getStatsCount = (status) => {
-    return schedules.filter((s) => s.status === status).length;
+  const statusCounts = schedules.reduce(
+    (acc, schedule) => {
+      const currentStatus = schedule.status || "scheduled";
+      acc[currentStatus] = (acc[currentStatus] || 0) + 1;
+      return acc;
+    },
+    {
+      scheduled: 0,
+      active: 0,
+      pending: 0,
+      completed: 0,
+      "rollback-completed": 0,
+      failed: 0,
+      error: 0,
+      paused: 0,
+    },
+  );
+
+  const activeSchedules =
+    statusCounts.scheduled + statusCounts.active + statusCounts.pending;
+  const completedSchedules =
+    statusCounts.completed + statusCounts["rollback-completed"];
+  const failedSchedules = statusCounts.failed + statusCounts.error;
+
+  const upcomingSchedules = [...schedules]
+    .filter((schedule) => schedule.pushTime)
+    .sort(
+      (a, b) => new Date(a.pushTime).getTime() - new Date(b.pushTime).getTime(),
+    );
+
+  const nextUpcoming = upcomingSchedules.find(
+    (schedule) => new Date(schedule.pushTime).getTime() > Date.now(),
+  );
+
+  const getCountdown = (dateTime) => {
+    if (!dateTime) {
+      return { days: "00", hours: "00", minutes: "00" };
+    }
+
+    const diff = Math.max(new Date(dateTime).getTime() - Date.now(), 0);
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const minutes = Math.floor((diff / (1000 * 60)) % 60);
+
+    return {
+      days: String(days).padStart(2, "0"),
+      hours: String(hours).padStart(2, "0"),
+      minutes: String(minutes).padStart(2, "0"),
+    };
+  };
+
+  const countdown = getCountdown(nextUpcoming?.pushTime);
+
+  const healthRows = [
+    {
+      label: "Stable Schedules",
+      value: activeSchedules + completedSchedules,
+      tone: "text-success bg-green-50 border-green-200",
+    },
+    {
+      label: "Paused Schedules",
+      value: statusCounts.paused,
+      tone: "text-warning bg-amber-50 border-amber-200",
+    },
+    {
+      label: "Failed Schedules",
+      value: failedSchedules,
+      tone: "text-error bg-red-50 border-red-200",
+    },
+  ];
+
+  const metrics = [
+    {
+      label: "Total Schedules",
+      value: schedules.length,
+      delta: `${activeSchedules > 0 ? "+" : ""}${activeSchedules} active`,
+    },
+    {
+      label: "Pending Merges",
+      value: statusCounts.pending,
+      delta: `${statusCounts.scheduled} scheduled`,
+    },
+    {
+      label: "Completed",
+      value: completedSchedules,
+      delta: `${statusCounts["rollback-completed"]} rolled back`,
+    },
+    {
+      label: "Risk Alerts",
+      value: failedSchedules,
+      delta: failedSchedules === 0 ? "All healthy" : "Needs review",
+    },
+  ];
+
+  const formatCompactDate = (value) => {
+    if (!value) return "Not scheduled";
+    return new Date(value).toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   return (
-    <div className="min-h-screen bg-bg text-text font-primary">
-      <div className="container mx-auto px-4 py-8">
-        <Navbar />
+    <Navbar
+      title="Merge Operations Overview"
+      subtitle="Manage schedules, track branch health, and keep rollback actions transparent."
+    >
+      {notification.show && (
+        <Notification
+          type={notification.type}
+          message={notification.message}
+          onClose={() => setNotification({ ...notification, show: false })}
+        />
+      )}
 
-        <div className="container mx-auto px-6 py-8">
-          {/* Notification */}
-          {notification.show && (
-            <Notification
-              type={notification.type}
-              message={notification.message}
-              onClose={() => setNotification({ ...notification, show: false })}
-            />
-          )}
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
+        {metrics.map((metric) => (
+          <article key={metric.label} className="pc-surface pc-kpi">
+            <p className="pc-kpi-label">{metric.label}</p>
+            <p className="pc-kpi-value">{metric.value}</p>
+            <span className="pc-kpi-delta">{metric.delta}</span>
+          </article>
+        ))}
+      </section>
 
-          {/* Page Header */}
-          <Header
-            title="Dashboard"
-            subtitle="Manage and monitor your scheduled GitHub pushes"
-          />
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm font-medium">
-                    Total Scheduled
-                  </p>
-                  <p className="text-3xl font-bold text-gray-800 mt-2">
-                    {getStatsCount("scheduled")}
-                  </p>
-                </div>
-                <div className="bg-blue-100 p-3 rounded-full">
-                  <svg
-                    className="w-8 h-8 text-blue-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
+      <section className="grid grid-cols-1 xl:grid-cols-[1.9fr_1fr] gap-5 items-start">
+        <div className="space-y-5 min-w-0">
+          <div className="pc-surface p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-xl font-bold text-text">
+                  Upcoming Schedules
+                </h2>
+                <p className="text-sm text-textMuted">
+                  Monitor active pipelines and rollback-ready merge jobs.
+                </p>
               </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm font-medium">Completed</p>
-                  <p className="text-3xl font-bold text-gray-800 mt-2">
-                    {getStatsCount("completed")}
-                  </p>
-                </div>
-                <div className="bg-green-100 p-3 rounded-full">
-                  <svg
-                    className="w-8 h-8 text-green-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-yellow-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm font-medium">Pending</p>
-                  <p className="text-3xl font-bold text-gray-800 mt-2">
-                    {getStatsCount("pending")}
-                  </p>
-                </div>
-                <div className="bg-yellow-100 p-3 rounded-full">
-                  <svg
-                    className="w-8 h-8 text-yellow-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Scheduled Pushes Section */}
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">
-              Scheduled Pushes
-            </h2>
-          </div>
-
-          {/* Schedule Cards Grid */}
-          {loading ? (
-            <div className="bg-white rounded-xl shadow-lg p-12 text-center">
-              <div className="flex justify-center items-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              </div>
-              <p className="text-gray-600 mt-4">Loading schedules...</p>
-            </div>
-          ) : schedules.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {schedules.map((schedule) => (
-                <RepoCard
-                  key={schedule.id}
-                  schedule={schedule}
-                  onDelete={handleDelete}
-                  onUpdate={fetchSchedules}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl shadow-lg p-12 text-center">
-              <svg
-                className="w-16 h-16 mx-auto text-gray-400 mb-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-              <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                No schedules yet
-              </h3>
-              <p className="text-gray-500 mb-6">
-                Get started by scheduling your first push
-              </p>
-              <Link
-                to="/add"
-                className="inline-block px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-lg hover:from-blue-700 hover:to-indigo-800 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
-              >
-                + Schedule Your First Push
+              <Link to="/add" className="pc-btn pc-btn-secondary">
+                Create Schedule
               </Link>
             </div>
-          )}
+
+            {loading ? (
+              <div className="rounded-xl border border-border bg-bg py-14 text-center">
+                <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <p className="mt-4 text-sm text-textMuted">
+                  Loading schedules...
+                </p>
+              </div>
+            ) : schedules.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4 2xl:grid-cols-2">
+                {schedules.map((schedule) => (
+                  <RepoCard
+                    key={schedule.id}
+                    schedule={schedule}
+                    onDelete={handleDelete}
+                    onUpdate={fetchSchedules}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-border bg-bg px-6 py-14 text-center">
+                <h3 className="text-lg font-semibold text-text">
+                  No schedules yet
+                </h3>
+                <p className="mt-1 text-sm text-textMuted">
+                  Start with one merge schedule, then scale your automation
+                  workflow.
+                </p>
+                <Link to="/add" className="pc-btn pc-btn-primary mt-5">
+                  Schedule Your First Merge
+                </Link>
+              </div>
+            )}
+          </div>
+
+          <ActivityLog />
         </div>
 
-        {/* User Activity Log Section */}
-        <ActivityLog />
-      </div>
-    </div>
+        <aside className="space-y-5">
+          <div className="pc-surface overflow-hidden">
+            <div className="bg-gradient-to-br from-primary-dark via-primary to-secondary p-5 text-white">
+              <p className="text-xs uppercase tracking-[0.1em] text-white/80">
+                Next Production Release
+              </p>
+              <p className="mt-2 text-sm text-white/85">
+                {nextUpcoming
+                  ? `${nextUpcoming.repo_owner}/${nextUpcoming.repo_name}`
+                  : "No upcoming release queued"}
+              </p>
+
+              <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                {[
+                  { label: "Days", value: countdown.days },
+                  { label: "Hours", value: countdown.hours },
+                  { label: "Mins", value: countdown.minutes },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-lg bg-white/15 px-2 py-3"
+                  >
+                    <p className="text-2xl font-bold leading-none">
+                      {item.value}
+                    </p>
+                    <p className="mt-1 text-[0.65rem] uppercase tracking-[0.08em] text-white/80">
+                      {item.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <p className="mt-4 rounded-lg bg-white/20 px-3 py-2 text-xs font-medium text-white/95">
+                {nextUpcoming
+                  ? `Scheduled: ${formatCompactDate(nextUpcoming.pushTime)}`
+                  : "Plan your next release by adding a schedule."}
+              </p>
+            </div>
+          </div>
+
+          <div className="pc-surface p-5">
+            <h3 className="text-lg font-bold text-text">Branch Health</h3>
+            <p className="mt-1 text-sm text-textMuted">
+              Snapshot of pipeline readiness and risk signals.
+            </p>
+            <div className="mt-4 space-y-3">
+              {healthRows.map((row) => (
+                <div
+                  key={row.label}
+                  className={`flex items-center justify-between rounded-xl border px-3 py-2.5 ${row.tone}`}
+                >
+                  <span className="text-sm font-semibold">{row.label}</span>
+                  <span className="text-base font-bold">{row.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+      </section>
+    </Navbar>
   );
 };
 

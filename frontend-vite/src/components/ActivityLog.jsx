@@ -1,40 +1,27 @@
 import React, { useEffect, useState } from "react";
 import { activityLogAPI } from "../services/api";
 
-const ACTION_COLORS = {
-  "rollback-success": "bg-blue-100 text-blue-800 border-blue-300",
-  "rollback-failed": "bg-red-100 text-red-800 border-red-300",
-  "create-schedule": "bg-green-100 text-green-800 border-green-300",
-  "update-schedule": "bg-yellow-100 text-yellow-800 border-yellow-300",
-  "delete-schedule": "bg-red-100 text-red-800 border-red-300",
-};
-
-const ACTION_ICONS = {
-  "rollback-success": (
-    <span title="Rollback" className="mr-1">
-      ↩️
-    </span>
-  ),
-  "rollback-failed": (
-    <span title="Rollback Failed" className="mr-1">
-      ❌
-    </span>
-  ),
-  "create-schedule": (
-    <span title="Create" className="mr-1">
-      ➕
-    </span>
-  ),
-  "update-schedule": (
-    <span title="Update" className="mr-1">
-      ✏️
-    </span>
-  ),
-  "delete-schedule": (
-    <span title="Delete" className="mr-1">
-      🗑️
-    </span>
-  ),
+const ACTION_META = {
+  "rollback-success": {
+    label: "Rollback Success",
+    tone: "border-cyan-200 bg-cyan-50 text-cyan-700",
+  },
+  "rollback-failed": {
+    label: "Rollback Failed",
+    tone: "border-red-200 bg-red-50 text-red-700",
+  },
+  "create-schedule": {
+    label: "Create Schedule",
+    tone: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  },
+  "update-schedule": {
+    label: "Update Schedule",
+    tone: "border-amber-200 bg-amber-50 text-amber-700",
+  },
+  "delete-schedule": {
+    label: "Delete Schedule",
+    tone: "border-rose-200 bg-rose-50 text-rose-700",
+  },
 };
 
 const ActivityLog = () => {
@@ -67,100 +54,114 @@ const ActivityLog = () => {
   };
 
   return (
-    <div className="bg-bgSecondary rounded-xl shadow-md p-6 mt-8 border border-border">
-      <h2 className="text-xl font-bold text-text mb-4">User Activity Log</h2>
+    <section className="pc-surface p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-text">Activity Timeline</h2>
+          <p className="text-sm text-textMuted">
+            Recent user actions for scheduling, updates, and rollbacks.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="pc-btn pc-btn-secondary"
+          onClick={fetchLogs}
+        >
+          Refresh
+        </button>
+      </div>
+
       {loading ? (
-        <p className="text-textMuted">Loading activity logs...</p>
+        <p className="rounded-lg border border-border bg-bg px-4 py-8 text-center text-sm text-textMuted">
+          Loading activity logs...
+        </p>
       ) : error ? (
-        <p className="text-error">{error}</p>
+        <p className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
+          {error}
+        </p>
       ) : logs.length === 0 ? (
-        <p className="text-textMuted">No activity logs found.</p>
+        <p className="rounded-lg border border-dashed border-border bg-bg px-4 py-8 text-center text-sm text-textMuted">
+          No activity logs found.
+        </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm border border-border rounded-lg overflow-hidden">
-            <thead>
-              <tr className="bg-bg border-b border-border">
-                <th className="px-4 py-2 text-left text-textMuted">Time</th>
-                <th className="px-4 py-2 text-left text-textMuted">Action</th>
-                <th className="px-4 py-2 text-left text-textMuted">Schedule</th>
-                <th className="px-4 py-2 text-left text-textMuted">Details</th>
+        <div className="overflow-x-auto pc-scrollbar">
+          <table className="min-w-full overflow-hidden rounded-xl border border-border text-sm">
+            <thead className="bg-bg text-left text-xs uppercase tracking-[0.08em] text-textMuted">
+              <tr>
+                <th className="px-4 py-3">Time</th>
+                <th className="px-4 py-3">Action</th>
+                <th className="px-4 py-3">Schedule</th>
+                <th className="px-4 py-3">Details</th>
               </tr>
             </thead>
             <tbody>
-              {logs.map((log, idx) => (
-                <tr
-                  key={log.id}
-                  className={
-                    idx % 2 === 0
-                      ? "bg-bgSecondary border-t border-border"
-                      : "bg-bg border-t border-border"
-                  }
-                >
-                  {/* Time */}
-                  <td className="px-4 py-2 whitespace-nowrap">
-                    {new Date(log.created_at).toLocaleString(undefined, {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      second: "2-digit",
-                    })}
-                  </td>
-                  {/* Action with badge and icon */}
-                  <td className="px-4 py-2">
-                    <span
-                      className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold border ${
-                        ACTION_COLORS[log.action] ||
-                        "bg-bg border border-border text-textMuted"
-                      }`}
-                      aria-label={`Action: ${log.action}`}
-                    >
-                      {ACTION_ICONS[log.action] || null}
-                      {log.action.replace(/-/g, " ")}
-                    </span>
-                  </td>
-                  {/* Schedule ID with ellipsis and tooltip */}
-                  <td
-                    className="px-4 py-2 max-w-[10rem] truncate"
-                    title={log.schedule_id || "-"}
+              {logs.map((log) => {
+                const meta = ACTION_META[log.action] || {
+                  label: log.action.replace(/-/g, " "),
+                  tone: "border-slate-200 bg-slate-50 text-slate-700",
+                };
+
+                return (
+                  <tr
+                    key={log.id}
+                    className="border-t border-border bg-white align-top"
                   >
-                    {log.schedule_id ? (
-                      <span className="font-mono text-xs">
-                        {log.schedule_id.slice(0, 8)}...
-                        {log.schedule_id.slice(-4)}
+                    <td className="px-4 py-3 text-xs text-textMuted whitespace-nowrap">
+                      {new Date(log.created_at).toLocaleString(undefined, {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      })}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      <span className={`pc-badge border ${meta.tone}`}>
+                        {meta.label}
                       </span>
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-                  {/* Collapsible Details */}
-                  <td className="px-4 py-2">
-                    {log.details ? (
-                      <div>
-                        <button
-                          className="text-primary underline text-xs mb-1"
-                          onClick={() => toggleExpand(log.id)}
-                        >
-                          {expanded[log.id] ? "Hide details" : "Show details"}
-                        </button>
-                        {expanded[log.id] && (
-                          <pre className="bg-bg rounded p-2 overflow-x-auto max-w-xs text-xs font-mono border border-border mt-1 text-textMuted">
-                            {JSON.stringify(log.details, null, 2)}
-                          </pre>
-                        )}
-                      </div>
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {log.schedule_id ? (
+                        <span className="rounded-md bg-bg px-2 py-1 font-mono text-[11px] text-text">
+                          {log.schedule_id.slice(0, 8)}...
+                          {log.schedule_id.slice(-4)}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-textMuted">-</span>
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {log.details ? (
+                        <div>
+                          <button
+                            type="button"
+                            className="text-xs font-semibold text-primary underline"
+                            onClick={() => toggleExpand(log.id)}
+                          >
+                            {expanded[log.id] ? "Hide details" : "Show details"}
+                          </button>
+                          {expanded[log.id] && (
+                            <pre className="mt-2 max-w-[23rem] overflow-x-auto rounded-lg border border-border bg-bg p-2 text-[11px] text-textMuted pc-scrollbar">
+                              {JSON.stringify(log.details, null, 2)}
+                            </pre>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-textMuted">-</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
-    </div>
+    </section>
   );
 };
 
