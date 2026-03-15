@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import RepoCard from "../components/RepoCard";
 import Notification from "../components/Notification";
@@ -14,6 +14,7 @@ const Dashboard = () => {
     type: "",
     message: "",
   });
+  const [searchParams] = useSearchParams();
 
   // Fetch schedules from backend API
   useEffect(() => {
@@ -100,7 +101,30 @@ const Dashboard = () => {
     0,
   );
 
-  const upcomingSchedules = [...schedules]
+  const searchQuery = (searchParams.get("q") || "").trim().toLowerCase();
+
+  const filteredSchedules = schedules.filter((schedule) => {
+    if (!searchQuery) {
+      return true;
+    }
+
+    const status = normalizeStatus(schedule.status);
+    const searchableFields = [
+      schedule.repo_owner,
+      schedule.repo_name,
+      schedule.source_branch,
+      schedule.target_branch,
+      schedule.github_repo_url,
+      status,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return searchableFields.includes(searchQuery);
+  });
+
+  const upcomingSchedules = [...filteredSchedules]
     .filter((schedule) => schedule.pushTime)
     .sort(
       (a, b) => new Date(a.pushTime).getTime() - new Date(b.pushTime).getTime(),
@@ -242,9 +266,9 @@ const Dashboard = () => {
                   Loading schedules...
                 </p>
               </div>
-            ) : schedules.length > 0 ? (
+            ) : filteredSchedules.length > 0 ? (
               <div className="grid grid-cols-1 gap-4 2xl:grid-cols-2">
-                {schedules.map((schedule) => (
+                {filteredSchedules.map((schedule) => (
                   <RepoCard
                     key={schedule.id}
                     schedule={schedule}
@@ -252,6 +276,19 @@ const Dashboard = () => {
                     onUpdate={fetchSchedules}
                   />
                 ))}
+              </div>
+            ) : hasSchedules && searchQuery ? (
+              <div className="rounded-xl border border-dashed border-border bg-bg px-6 py-10 text-center">
+                <h3 className="text-lg font-semibold text-text">
+                  No schedules matched "{searchQuery}"
+                </h3>
+                <p className="mt-1 text-sm text-textMuted">
+                  Try another keyword or clear the top search to see all
+                  schedules.
+                </p>
+                <Link to="/" className="pc-btn pc-btn-secondary mt-5">
+                  Clear Search
+                </Link>
               </div>
             ) : (
               <div className="rounded-xl border border-dashed border-border bg-bg px-6 py-14 text-center">

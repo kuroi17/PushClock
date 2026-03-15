@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const NAV_ITEMS = [
@@ -66,12 +66,46 @@ const Navbar = ({ title, subtitle, children }) => {
   const { user, logout } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [topbarQuery, setTopbarQuery] = useState("");
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     setShowDropdown(false);
     setMobileSidebarOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setTopbarQuery(params.get("q") || "");
+  }, [location.search]);
+
+  const updateSearchQuery = (value) => {
+    const params = new URLSearchParams(location.search);
+    const nextQuery = value.trim();
+
+    if (nextQuery) {
+      params.set("q", nextQuery);
+    } else {
+      params.delete("q");
+    }
+
+    const queryString = params.toString();
+    navigate({
+      pathname: location.pathname,
+      search: queryString ? `?${queryString}` : "",
+    });
+  };
+
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+    updateSearchQuery(topbarQuery);
+  };
+
+  const handleSearchClear = () => {
+    setTopbarQuery("");
+    updateSearchQuery("");
+  };
 
   const username = user?.username || "Guest";
   const avatar =
@@ -187,7 +221,11 @@ const Navbar = ({ title, subtitle, children }) => {
               </svg>
             </button>
 
-            <div className="hidden md:flex items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 text-sm text-textMuted min-w-[16rem] max-w-[24rem]">
+            <form
+              onSubmit={handleSearchSubmit}
+              className="hidden md:flex items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 text-sm text-textMuted min-w-[16rem] max-w-[24rem]"
+              role="search"
+            >
               <svg
                 className="h-4 w-4"
                 fill="none"
@@ -201,10 +239,56 @@ const Navbar = ({ title, subtitle, children }) => {
                   d="M21 21l-4.35-4.35m1.35-5.65a7 7 0 11-14 0 7 7 0 0114 0z"
                 />
               </svg>
-              <span className="truncate">
-                Search systems, repositories, and schedules...
-              </span>
-            </div>
+              <input
+                type="text"
+                value={topbarQuery}
+                onChange={(event) => setTopbarQuery(event.target.value)}
+                placeholder="Search schedules and activity..."
+                className="w-full min-w-0 bg-transparent text-sm text-text outline-none placeholder:text-textMuted"
+                aria-label="Search schedules and activity"
+              />
+
+              {topbarQuery ? (
+                <button
+                  type="button"
+                  onClick={handleSearchClear}
+                  className="pc-icon-btn h-7 w-7"
+                  aria-label="Clear search"
+                >
+                  <svg
+                    className="h-3.5 w-3.5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  className="pc-icon-btn h-7 w-7"
+                  aria-label="Run search"
+                >
+                  <svg
+                    className="h-3.5 w-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-4.35-4.35m1.35-5.65a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </button>
+              )}
+            </form>
           </div>
 
           <div className="flex items-center gap-2">
