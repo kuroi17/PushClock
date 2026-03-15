@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { activityLogAPI } from "../services/api";
 
 const ACTION_META = {
@@ -24,7 +25,7 @@ const ACTION_META = {
   },
 };
 
-const ActivityLog = () => {
+const ActivityLog = ({ preview = false, limit = null }) => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -53,22 +54,34 @@ const ActivityLog = () => {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const visibleLogs =
+    preview && Number.isInteger(limit) ? logs.slice(0, limit) : logs;
+
   return (
     <section className="pc-surface p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-text">Activity Timeline</h2>
           <p className="text-sm text-textMuted">
-            Recent user actions for scheduling, updates, and rollbacks.
+            {preview
+              ? "Latest scheduling, update, and rollback events."
+              : "Recent user actions for scheduling, updates, and rollbacks."}
           </p>
         </div>
-        <button
-          type="button"
-          className="pc-btn pc-btn-secondary"
-          onClick={fetchLogs}
-        >
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          {preview && (
+            <Link to="/activity" className="pc-btn pc-btn-secondary">
+              View Timeline
+            </Link>
+          )}
+          <button
+            type="button"
+            className="pc-btn pc-btn-secondary"
+            onClick={fetchLogs}
+          >
+            {preview ? "Refresh" : "Refresh Logs"}
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -79,9 +92,9 @@ const ActivityLog = () => {
         <p className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
           {error}
         </p>
-      ) : logs.length === 0 ? (
+      ) : visibleLogs.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border bg-bg px-4 py-8 text-center text-sm text-textMuted">
-          No activity logs found.
+          {preview ? "No recent activity yet." : "No activity logs found."}
         </p>
       ) : (
         <div className="overflow-x-auto pc-scrollbar">
@@ -95,7 +108,7 @@ const ActivityLog = () => {
               </tr>
             </thead>
             <tbody>
-              {logs.map((log) => {
+              {visibleLogs.map((log) => {
                 const meta = ACTION_META[log.action] || {
                   label: log.action.replace(/-/g, " "),
                   tone: "border-slate-200 bg-slate-50 text-slate-700",

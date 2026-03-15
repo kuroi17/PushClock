@@ -247,7 +247,7 @@ const Dashboard = () => {
             )}
           </div>
 
-          <ActivityLog />
+          <ActivityLog preview limit={5} />
         </div>
 
         <aside className="space-y-5">
