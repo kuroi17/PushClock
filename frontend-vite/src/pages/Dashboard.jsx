@@ -69,29 +69,36 @@ const Dashboard = () => {
     }
   };
 
-  const statusCounts = schedules.reduce(
-    (acc, schedule) => {
-      const currentStatus = schedule.status || "scheduled";
-      acc[currentStatus] = (acc[currentStatus] || 0) + 1;
-      return acc;
-    },
-    {
-      scheduled: 0,
-      active: 0,
-      pending: 0,
-      completed: 0,
-      "rollback-completed": 0,
-      failed: 0,
-      error: 0,
-      paused: 0,
-    },
-  );
+  const normalizeStatus = (status) =>
+    String(status || "scheduled")
+      .trim()
+      .toLowerCase();
 
-  const activeSchedules =
-    statusCounts.scheduled + statusCounts.active + statusCounts.pending;
-  const completedSchedules =
-    statusCounts.completed + statusCounts["rollback-completed"];
-  const failedSchedules = statusCounts.failed + statusCounts.error;
+  const statusCounts = schedules.reduce((acc, schedule) => {
+    const currentStatus = normalizeStatus(schedule.status);
+    acc[currentStatus] = (acc[currentStatus] || 0) + 1;
+    return acc;
+  }, {});
+
+  const countStatuses = (...statuses) =>
+    statuses.reduce((total, status) => total + (statusCounts[status] || 0), 0);
+
+  const activeSchedules = countStatuses("scheduled", "active", "pending");
+  const completedSchedules = countStatuses("completed", "rollback-completed");
+
+  const pausedSchedules = schedules.filter((schedule) =>
+    normalizeStatus(schedule.status).includes("pause"),
+  ).length;
+
+  const failedSchedules = schedules.filter((schedule) => {
+    const status = normalizeStatus(schedule.status);
+    return status.includes("fail") || status.includes("error");
+  }).length;
+
+  const stableSchedules = Math.max(
+    schedules.length - pausedSchedules - failedSchedules,
+    0,
+  );
 
   const upcomingSchedules = [...schedules]
     .filter((schedule) => schedule.pushTime)
@@ -123,20 +130,32 @@ const Dashboard = () => {
   const countdown = getCountdown(nextUpcoming?.pushTime);
   const hasSchedules = schedules.length > 0;
 
+  const getShareLabel = (value) => {
+    if (schedules.length === 0) {
+      return "No schedules";
+    }
+
+    const percentage = Math.round((value / schedules.length) * 100);
+    return `${percentage}% of total`;
+  };
+
   const healthRows = [
     {
       label: "Stable Schedules",
-      value: activeSchedules + completedSchedules,
+      value: stableSchedules,
+      share: getShareLabel(stableSchedules),
       tone: "text-success bg-green-50 border-green-200",
     },
     {
       label: "Paused Schedules",
-      value: statusCounts.paused,
+      value: pausedSchedules,
+      share: getShareLabel(pausedSchedules),
       tone: "text-warning bg-amber-50 border-amber-200",
     },
     {
       label: "Failed Schedules",
       value: failedSchedules,
+      share: getShareLabel(failedSchedules),
       tone: "text-error bg-red-50 border-red-200",
     },
   ];
@@ -149,13 +168,13 @@ const Dashboard = () => {
     },
     {
       label: "Pending Merges",
-      value: statusCounts.pending,
-      delta: `${statusCounts.scheduled} scheduled`,
+      value: statusCounts.pending || 0,
+      delta: `${statusCounts.scheduled || 0} scheduled`,
     },
     {
       label: "Completed",
       value: completedSchedules,
-      delta: `${statusCounts["rollback-completed"]} rolled back`,
+      delta: `${statusCounts["rollback-completed"] || 0} rolled back`,
     },
     {
       label: "Risk Alerts",
@@ -304,7 +323,12 @@ const Dashboard = () => {
                   key={row.label}
                   className={`flex items-center justify-between rounded-xl border px-3 py-2.5 ${row.tone}`}
                 >
-                  <span className="text-sm font-semibold">{row.label}</span>
+                  <div>
+                    <span className="text-sm font-semibold">{row.label}</span>
+                    <p className="text-[11px] font-medium opacity-80">
+                      {row.share}
+                    </p>
+                  </div>
                   <span className="text-base font-bold">{row.value}</span>
                 </div>
               ))}
