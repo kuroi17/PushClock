@@ -4,6 +4,7 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import AddSchedule from "./pages/AddSchedule";
+import ActivityTimeline from "./pages/ActivityTimeline";
 import Login from "./pages/Login";
 import "./index.css";
 
@@ -27,6 +28,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <AddSchedule />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/activity"
+              element={
+                <ProtectedRoute>
+                  <ActivityTimeline />
                 </ProtectedRoute>
               }
             />
