@@ -121,6 +121,7 @@ const Dashboard = () => {
   };
 
   const countdown = getCountdown(nextUpcoming?.pushTime);
+  const hasSchedules = schedules.length > 0;
 
   const healthRows = [
     {
@@ -208,9 +209,11 @@ const Dashboard = () => {
                   Monitor active pipelines and rollback-ready merge jobs.
                 </p>
               </div>
-              <Link to="/add" className="pc-btn pc-btn-secondary">
-                Create Schedule
-              </Link>
+              {hasSchedules && (
+                <Link to="/add" className="pc-btn pc-btn-secondary">
+                  Create Schedule
+                </Link>
+              )}
             </div>
 
             {loading ? (
