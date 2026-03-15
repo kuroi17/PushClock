@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { activityLogAPI } from "../services/api";
 
 const ACTION_META = {
@@ -25,10 +25,24 @@ const ACTION_META = {
   },
 };
 
+const getActionLabel = (action) =>
+  ACTION_META[action]?.label ||
+  String(action || "Unknown action").replace(/-/g, " ");
+
 const ActivityLog = ({ preview = false, limit = null }) => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [expanded, setExpanded] = useState({});
+  const [actionFilter, setActionFilter] = useState("all");
+
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const isFullPageView = !preview && location.pathname === "/activity";
+  const searchQuery = isFullPageView
+    ? (searchParams.get("q") || "").trim().toLowerCase()
+    : "";
 
   useEffect(() => {
     fetchLogs();
@@ -37,6 +51,7 @@ const ActivityLog = ({ preview = false, limit = null }) => {
   const fetchLogs = async () => {
     setLoading(true);
     setError(null);
+
     try {
       const response = await activityLogAPI.getAll();
       setLogs(response.data || []);
@@ -47,15 +62,62 @@ const ActivityLog = ({ preview = false, limit = null }) => {
     }
   };
 
-  // Collapsible details state
-  const [expanded, setExpanded] = useState({});
+  const handleSearchChange = (event) => {
+    const nextValue = event.target.value;
+    const nextParams = new URLSearchParams(searchParams);
+
+    if (nextValue.trim()) {
+      nextParams.set("q", nextValue.trim());
+    } else {
+      nextParams.delete("q");
+    }
+
+    setSearchParams(nextParams);
+  };
 
   const toggleExpand = (id) => {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const actionOptions = useMemo(
+    () => [...new Set(logs.map((log) => log.action).filter(Boolean))].sort(),
+    [logs],
+  );
+
+  const filteredLogs = useMemo(() => {
+    return logs.filter((log) => {
+      if (actionFilter !== "all" && log.action !== actionFilter) {
+        return false;
+      }
+
+      if (!searchQuery) {
+        return true;
+      }
+
+      const searchableText = [
+        getActionLabel(log.action),
+        log.action || "",
+        log.schedule_id || "",
+        JSON.stringify(log.details || {}),
+        new Date(log.created_at).toLocaleString(),
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return searchableText.includes(searchQuery);
+    });
+  }, [actionFilter, logs, searchQuery]);
+
   const visibleLogs =
-    preview && Number.isInteger(limit) ? logs.slice(0, limit) : logs;
+    preview && Number.isInteger(limit)
+      ? filteredLogs.slice(0, limit)
+      : filteredLogs;
+
+  const emptyMessage = preview
+    ? "No recent activity yet."
+    : searchQuery || actionFilter !== "all"
+      ? "No activity logs matched your current filters."
+      : "No activity logs found.";
 
   return (
     <section className="pc-surface p-5">
@@ -68,6 +130,7 @@ const ActivityLog = ({ preview = false, limit = null }) => {
               : "Recent user actions for scheduling, updates, and rollbacks."}
           </p>
         </div>
+
         <div className="flex items-center gap-2">
           {preview && (
             <Link to="/activity" className="pc-btn pc-btn-secondary">
@@ -84,94 +147,137 @@ const ActivityLog = ({ preview = false, limit = null }) => {
         </div>
       </div>
 
-      {loading ? (
+      {isFullPageView && (
+        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto]">
+          <input
+            type="text"
+            value={searchParams.get("q") || ""}
+            onChange={handleSearchChange}
+            placeholder="Search logs, actions, schedule IDs..."
+            className="pc-input"
+            aria-label="Search activity logs"
+          />
+
+          <select
+            value={actionFilter}
+            onChange={(event) => setActionFilter(event.target.value)}
+            className="pc-select min-w-[12rem]"
+            aria-label="Filter logs by action"
+          >
+            <option value="all">All Activities</option>
+            {actionOptions.map((action) => (
+              <option key={action} value={action}>
+                {getActionLabel(action)}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {loading && (
         <p className="rounded-lg border border-border bg-bg px-4 py-8 text-center text-sm text-textMuted">
           Loading activity logs...
         </p>
-      ) : error ? (
+      )}
+
+      {!loading && error && (
         <p className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
           {error}
         </p>
-      ) : visibleLogs.length === 0 ? (
+      )}
+
+      {!loading && !error && visibleLogs.length === 0 && (
         <p className="rounded-lg border border-dashed border-border bg-bg px-4 py-8 text-center text-sm text-textMuted">
-          {preview ? "No recent activity yet." : "No activity logs found."}
+          {emptyMessage}
         </p>
-      ) : (
-        <div className="overflow-x-auto pc-scrollbar">
-          <table className="min-w-full overflow-hidden rounded-xl border border-border text-sm">
-            <thead className="bg-bg text-left text-xs uppercase tracking-[0.08em] text-textMuted">
-              <tr>
-                <th className="px-4 py-3">Time</th>
-                <th className="px-4 py-3">Action</th>
-                <th className="px-4 py-3">Schedule</th>
-                <th className="px-4 py-3">Details</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleLogs.map((log) => {
-                const meta = ACTION_META[log.action] || {
-                  label: log.action.replace(/-/g, " "),
-                  tone: "border-slate-200 bg-slate-50 text-slate-700",
-                };
+      )}
 
-                return (
-                  <tr
-                    key={log.id}
-                    className="border-t border-border bg-white align-top"
-                  >
-                    <td className="px-4 py-3 text-xs text-textMuted whitespace-nowrap">
-                      {new Date(log.created_at).toLocaleString(undefined, {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        second: "2-digit",
-                      })}
-                    </td>
+      {!loading && !error && visibleLogs.length > 0 && (
+        <div>
+          <div className="overflow-x-auto pc-scrollbar">
+            <table className="min-w-full overflow-hidden rounded-xl border border-border text-sm">
+              <thead className="bg-bg text-left text-xs uppercase tracking-[0.08em] text-textMuted">
+                <tr>
+                  <th className="px-4 py-3">Time</th>
+                  <th className="px-4 py-3">Action</th>
+                  <th className="px-4 py-3">Schedule</th>
+                  <th className="px-4 py-3">Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleLogs.map((log) => {
+                  const meta = ACTION_META[log.action] || {
+                    label: getActionLabel(log.action),
+                    tone: "border-slate-200 bg-slate-50 text-slate-700",
+                  };
 
-                    <td className="px-4 py-3">
-                      <span className={`pc-badge border ${meta.tone}`}>
-                        {meta.label}
-                      </span>
-                    </td>
+                  return (
+                    <tr
+                      key={log.id}
+                      className="border-t border-border bg-white align-top"
+                    >
+                      <td className="px-4 py-3 text-xs text-textMuted whitespace-nowrap">
+                        {new Date(log.created_at).toLocaleString(undefined, {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          second: "2-digit",
+                        })}
+                      </td>
 
-                    <td className="px-4 py-3">
-                      {log.schedule_id ? (
-                        <span className="rounded-md bg-bg px-2 py-1 font-mono text-[11px] text-text">
-                          {log.schedule_id.slice(0, 8)}...
-                          {log.schedule_id.slice(-4)}
+                      <td className="px-4 py-3">
+                        <span className={`pc-badge border ${meta.tone}`}>
+                          {meta.label}
                         </span>
-                      ) : (
-                        <span className="text-xs text-textMuted">-</span>
-                      )}
-                    </td>
+                      </td>
 
-                    <td className="px-4 py-3">
-                      {log.details ? (
-                        <div>
-                          <button
-                            type="button"
-                            className="text-xs font-semibold text-primary underline"
-                            onClick={() => toggleExpand(log.id)}
-                          >
-                            {expanded[log.id] ? "Hide details" : "Show details"}
-                          </button>
-                          {expanded[log.id] && (
-                            <pre className="mt-2 max-w-[23rem] overflow-x-auto rounded-lg border border-border bg-bg p-2 text-[11px] text-textMuted pc-scrollbar">
-                              {JSON.stringify(log.details, null, 2)}
-                            </pre>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-textMuted">-</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      <td className="px-4 py-3">
+                        {log.schedule_id ? (
+                          <span className="rounded-md bg-bg px-2 py-1 font-mono text-[11px] text-text">
+                            {log.schedule_id.slice(0, 8)}...
+                            {log.schedule_id.slice(-4)}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-textMuted">-</span>
+                        )}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        {log.details ? (
+                          <div>
+                            <button
+                              type="button"
+                              className="text-xs font-semibold text-primary underline"
+                              onClick={() => toggleExpand(log.id)}
+                            >
+                              {expanded[log.id]
+                                ? "Hide details"
+                                : "Show details"}
+                            </button>
+                            {expanded[log.id] && (
+                              <pre className="mt-2 max-w-[23rem] overflow-x-auto rounded-lg border border-border bg-bg p-2 text-[11px] text-textMuted pc-scrollbar">
+                                {JSON.stringify(log.details, null, 2)}
+                              </pre>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-textMuted">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {!preview && (
+            <p className="mt-3 text-xs text-textMuted">
+              Showing {visibleLogs.length} of {logs.length} events.
+            </p>
+          )}
         </div>
       )}
     </section>
