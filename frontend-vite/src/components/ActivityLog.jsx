@@ -257,7 +257,7 @@ const ActivityLog = ({ preview = false, limit = null }) => {
                                 : "Show details"}
                             </button>
                             {expanded[log.id] && (
-                              <pre className="mt-2 max-w-[23rem] overflow-x-auto rounded-lg border border-border bg-bg p-2 text-[11px] text-textMuted pc-scrollbar">
+                              <pre className="pc-json-block mt-2 max-w-[42rem] overflow-x-auto pc-scrollbar">
                                 {JSON.stringify(log.details, null, 2)}
                               </pre>
                             )}
